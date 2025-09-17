@@ -17,7 +17,7 @@ class MVSF_Map
 
    constructor ()
    {
-      switch (SQLConfig.type) {
+      switch (Settings.SQL.type) {
 //         case 'MSSQL':
 //            this.#pSQL = new MVSQL_MSSQL(Settings.SQL, this.onSQLReady.bind(this));
 //            break;
