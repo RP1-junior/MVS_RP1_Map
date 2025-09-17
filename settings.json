@@ -1,0 +1,51 @@
+{
+   "_comment1": "'MVSF' contains Server Config Information for MVSF",
+   "MVSF": {
+      "nPort": "2000",
+
+      "_comment1": "If your server is using SSL, rename '_SSL' to 'SSL'",
+      "_SSL": {
+         "key":   "./ssl/server.key",
+         "cert":  "./ssl/server.cert"
+      },
+
+      "_comment2": "If your server is running REST AND requires a prefix to endpoint rename _REST to REST, and specify Prefix",
+      "_REST": {
+         "sPrefix": ""
+      }
+   },
+
+   "_comment2": "'RDS' contains RDS Configuration, retrieved from Dev Portal",
+   "RDS": {
+      "sService":           "MVSB",
+      "sConnect":           "secure=true;server=la2-demo00.rp1.dev:886;session=RDS",
+      "twRDEnvironmentIx":  5,
+      "sRDServiceId":       "rp1_map_cache",
+      "sKey":               "pskxrNNeGIx6R19SvSr<#f@.^uCM<2,YI3SqEzFRS&T!=mmjTW.JcH7+77y,JE<"
+   },
+
+   "SQL": {
+      "type": "MYSQL",
+      "config": {
+         "connectionLimit":  10,
+         "host":             "la2-mysql0.mv.local",
+         "port":             3306,
+         "user":             "dsernaque",
+         "password":         "$pyHunt2013",
+         "database":         "mvd_rp1_map",
+         "multipleStatements": true
+      }
+   },
+
+   "_comment3": "'SQL' contains SQL Config Data used by MVSQL. Currently only support 'MSSQL'",
+   "_SQL": {
+      "type": "MSSQL",
+      "config": {
+         "connectionString": "Driver=SQL Server;Server=la2-demo37;Database=MVD_RP1_Map_Earth;Trusted_Connection=yes;"
+      }
+   },
+
+   "Info": {
+      "sector": "\\\\cdn-web0\\earth0\\"
+   }
+}

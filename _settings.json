@@ -1,0 +1,30 @@
+{
+   "_comment1": "'MVSF' contains Server Config Information for MVSF",
+   "MVSF": {
+      "nPort": "2000",
+
+      "_comment1": "Rename to 'SSL', if you want to use SSL and specify key/cert file locations",
+      "_SSL": {
+         "key":   "./ssl/server.key",
+         "cert":  "./ssl/server.cert"
+      },
+
+      "_comment2": "Rename to 'REST', if this is a REST Service. Specify a prefix for EndPoint",
+      "_REST": {
+         "sPrefix": ""
+      }
+   },
+
+   "_comment2": "'RDS' contains RDS Configuration, retrieved from Dev Portal",
+   "RDS": {
+      "_comment1": "Insert Here the RDS Configuration data from Portal Site."
+   },
+
+   "_comment3": "'SQL' contains SQL Config Data used by MVSQL. Currently only support 'MSSQL'",
+   "SQL": {
+      "type": "MSSQL",
+      "config": {
+         "connectionString": "<INSERT HERE YOUR SQL Connection String"
+      }
+   }
+}

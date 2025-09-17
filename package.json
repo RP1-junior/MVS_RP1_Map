@@ -1,0 +1,23 @@
+{
+   "name": "mvsrp1map",
+   "version": "1.18.4",
+   "description": "MV Database Map",
+   "main": "server.js",
+   "scripts": {
+      "start": "node server",
+      "dev": "nodemon server"
+   },
+   "repository": {
+      "type": "git",
+      "url": "https://github.com/MetaversalCorp/MVS_RP1_Map.git"
+   },
+   "author": "Metaversal Corporation",
+   "license": "ISC",
+   "dependencies": {
+      "@metaversalcorp/mvsf": "^0.3.0",
+      "@metaversalcorp/mvrp_rds": "^0.22.0"
+   },
+   "devDependencies": {
+      "nodemon": "^2.0.22"
+   }
+}
