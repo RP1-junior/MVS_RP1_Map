@@ -15,15 +15,6 @@
       }
    },
 
-   "_comment2": "'RDS' contains RDS Configuration, retrieved from Dev Portal",
-   "RDS": {
-      "sService":           "MVSB",
-      "sConnect":           "secure=true;server=la2-demo00.rp1.dev:886;session=RDS",
-      "twRDEnvironmentIx":  5,
-      "sRDServiceId":       "rp1_map_cache",
-      "sKey":               "pskxrNNeGIx6R19SvSr<#f@.^uCM<2,YI3SqEzFRS&T!=mmjTW.JcH7+77y,JE<"
-   },
-
    "SQL": {
       "type": "MYSQL",
       "config": {

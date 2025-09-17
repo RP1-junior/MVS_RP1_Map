@@ -1,9 +1,6 @@
 const { MVSF, CreateMVSQL } = require ('@metaversalcorp/mvsf');
-const { MV           } = require ('@metaversalcorp/mvmf');
 const { InitSQL      } = require ('./utils.js');
 const Settings = require ('./settings.json');
-
-require ('@metaversalcorp/mvrp_rds');
 
 /*******************************************************************************************************************************
 **                                                     Main                                                                   **
@@ -25,10 +22,7 @@ class MVSF_Map
       {
          this.#pRequire = MV.MVMF.Core.Require ('MVRP_RDS');
 
-         this.#pRDS = new MV.MVRP.RDS.CLIENT (Settings.RDS);
-         this.#pRDS.Attach (this);
-
-         this.#pServer = new MVSF (Settings.MVSF, require ('./handler.json'), __dirname, this.#pRDS, 'application/json');
+         this.#pServer = new MVSF (Settings.MVSF, require ('./handler.json'), __dirname, null, 'application/json');
          this.#pServer.Run ();
 
          console.log ('SQL Server READY');

@@ -14,8 +14,7 @@
    "author": "Metaversal Corporation",
    "license": "ISC",
    "dependencies": {
-      "@metaversalcorp/mvsf": "^0.3.0",
-      "@metaversalcorp/mvrp_rds": "^0.22.0"
+      "@metaversalcorp/mvsf": "^0.3.0"
    },
    "devDependencies": {
       "nodemon": "^2.0.22"
