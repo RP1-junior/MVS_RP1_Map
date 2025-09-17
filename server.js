@@ -13,7 +13,7 @@ class MVSF_Map
    #pServer;
    #pRDS;
    #pSQL;
-   #pRequire;
+//   #pRequire;
 
    constructor ()
    {
@@ -34,7 +34,7 @@ class MVSF_Map
    {
       if (pMVSQL)
       {
-         this.#pRequire = MV.MVMF.Core.Require ('MVRP_RDS');
+//         this.#pRequire = MV.MVMF.Core.Require ('MVRP_RDS');
 
          this.#pServer = new MVSF (Settings.MVSF, require ('./handler.json'), __dirname, null, 'application/json');
          this.#pServer.Run ();
