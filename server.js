@@ -2,6 +2,9 @@ const { MVSF, CreateMVSQL } = require ('@metaversalcorp/mvsf');
 const { InitSQL      } = require ('./utils.js');
 const Settings = require ('./settings.json');
 
+// const { MVSQL_MSSQL  } = require ('@metaversalcorp/mvsql_mssql');
+const { MVSQL_MYSQL  } = require ('@metaversalcorp/mvsql_mysql');
+
 /*******************************************************************************************************************************
 **                                                     Main                                                                   **
 *******************************************************************************************************************************/
@@ -9,11 +12,22 @@ class MVSF_Map
 {
    #pServer;
    #pRDS;
+   #pSQL;
    #pRequire;
 
    constructor ()
    {
-      const pSql = CreateMVSQL (Settings.SQL, this.onSQLReady.bind (this));
+      switch (SQLConfig.type) {
+//         case 'MSSQL':
+//            this.#pSQL = new MVSQL_MSSQL(Settings.SQL, this.onSQLReady.bind(this));
+//            break;
+         case 'MYSQL':
+            this.#pSQL = new MVSQL_MYSQL(Settings.SQL, this.onSQLReady.bind(this));
+            break;
+         default:
+            pMVSQL = null;
+            break;
+      }
    }
 
    onSQLReady (pMVSQL, err)
