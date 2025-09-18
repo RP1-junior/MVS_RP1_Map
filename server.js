@@ -27,6 +27,7 @@ class MVSF_Map
                Settings.SQL.config.user= process.env.MYSQLUSER;
                Settings.SQL.config.password= process.env.MYSQLPASSWORD;
                Settings.SQL.config.database= process.env.MYSQLDATABASE;
+               console.log('setting: ', Settings.SQL.config);
             this.#pSQL = new MVSQL_MYSQL(Settings.SQL.config, this.onSQLReady.bind(this));
             break;
          default:
