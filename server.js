@@ -22,12 +22,12 @@ class MVSF_Map
 //            this.#pSQL = new MVSQL_MSSQL(Settings.SQL, this.onSQLReady.bind(this));
 //            break;
          case 'MYSQL':
-               Settings.SQL.host= process.env.MYSQLHOST;
-               Settings.SQL.port= process.env.MYSQLPORT;
-               Settings.SQL.user= process.env.MYSQLUSER;
-               Settings.SQL.password= process.env.MYSQLPASSWORD;
-               Settings.SQL.database= process.env.MYSQLDATABASE;
-            this.#pSQL = new MVSQL_MYSQL(Settings.SQL, this.onSQLReady.bind(this));
+               Settings.SQL.config.host= process.env.MYSQLHOST;
+               Settings.SQL.config.port= process.env.MYSQLPORT;
+               Settings.SQL.config.user= process.env.MYSQLUSER;
+               Settings.SQL.config.password= process.env.MYSQLPASSWORD;
+               Settings.SQL.config.database= process.env.MYSQLDATABASE;
+            this.#pSQL = new MVSQL_MYSQL(Settings.SQL.config, this.onSQLReady.bind(this));
             break;
          default:
             pMVSQL = null;

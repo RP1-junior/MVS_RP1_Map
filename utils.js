@@ -90,9 +90,9 @@ function RunQuery2Ex (Session, pData, fnRSP, fn, bRecover, pSQLData)
                      let sChannelName = pObjectHead.wClass_Object + '-' + pObjectHead.twObjectIx;
 
                      Session.socket.join (sChannelName);
-                     Session.socket.emit ('recover', 
+                     Session.socket.emit ('recover',
                         {
-                           nResult:    result.output.nResult, 
+                           nResult:    result.output.nResult,
                            aResultSet: result.recordsets,
                         }
                      );
@@ -104,9 +104,9 @@ if (pSQLData.Param == 0)
 else
    RawResult (pResult, result);
 //                     pResult.aResultSet = result.recordsets;
-                     
+
 //                     EventFetch ();
-                  } 
+                  }
 
                   pResult.nResult = result.output.nResult;
                }
@@ -132,8 +132,9 @@ function RunQuery2 (Session, pData, fnRSP, fn, pSQLData)
 function EventQueue (pServer)
 {
    g_nTimeout = 0;
+   let Query = g_pMVSQL.ComposeETL ('etl_Events');
 
-   g_pMVSQL.Exec ('exec @nResult = etl_Events;').then
+   g_pMVSQL.Exec (Query).then
    (
       (result) =>
       {
@@ -144,9 +145,9 @@ function EventQueue (pServer)
             for (let i=0; i < aRow.length; i++)
             {
                pObject = JSON.parse (aRow[i].Object);
-   
+
                let sChannelName = 'GLOBALREFRESH'; //pObject.pControl.wClass_Object + '-' + pObject.pControl.twObjectIx;
-   
+
                g_pServer.io.in (sChannelName).emit ('refresh', pObject);
             }
 
@@ -154,7 +155,7 @@ function EventQueue (pServer)
             {
                setTimeout (EventQueue, 0);
             }
-         } 
+         }
       }
    );
 }
