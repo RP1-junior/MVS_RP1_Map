@@ -22,6 +22,11 @@ class MVSF_Map
 //            this.#pSQL = new MVSQL_MSSQL(Settings.SQL, this.onSQLReady.bind(this));
 //            break;
          case 'MYSQL':
+               Settings.SQL.host= process.env.MYSQLHOST;
+               Settings.SQL.port= process.env.MYSQLPORT;
+               Settings.SQL.user= process.env.MYSQLUSER;
+               Settings.SQL.password= process.env.MYSQLPASSWORD;
+               Settings.SQL.database= process.env.MYSQLDATABASE;
             this.#pSQL = new MVSQL_MYSQL(Settings.SQL, this.onSQLReady.bind(this));
             break;
          default:
@@ -35,7 +40,7 @@ class MVSF_Map
       if (pMVSQL)
       {
 //         this.#pRequire = MV.MVMF.Core.Require ('MVRP_RDS');
-
+Settings.MVSF.nPort = process.env.PORT || 3000;
          this.#pServer = new MVSF (Settings.MVSF, require ('./handler.json'), __dirname, null, 'application/json');
          this.#pServer.Run ();
 
