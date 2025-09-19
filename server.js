@@ -59,24 +59,30 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
+const PORT = process.env.PORT || 3000;
+
 http.createServer((req, res) => {
+  // Serve fabric.msf when requested
   if (req.url === '/fabric.msf') {
     const filePath = path.join(__dirname, 'fabric.msf');
+
     fs.readFile(filePath, (err, data) => {
       if (err) {
-        res.writeHead(404);
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
         res.end('File not found');
       } else {
         res.writeHead(200, { 'Content-Type': 'application/octet-stream' });
         res.end(data);
       }
     });
+
   } else {
-    res.writeHead(404);
+    // Optional: simple homepage or 404
+    res.writeHead(404, { 'Content-Type': 'text/plain' });
     res.end('Not found');
   }
-}).listen(3000, () => {
-  console.log('Server running at http://localhost:3000');
+}).listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
 
 
