@@ -31,13 +31,13 @@ class MVSF_Map {
     if (pMVSQL) {
       Settings.MVSF.nPort = process.env.PORT || 3000;
 
-      // Create the MVSF server instance (but don't let it listen itself)
+      // Create MVSF instance
       this.#pServer = new MVSF(Settings.MVSF, require('./handler.json'), __dirname, null, 'application/json');
 
       console.log('SQL Server READY');
       InitSQL(pMVSQL, this.#pServer, Settings.Info);
 
-      // Create a single HTTP server that handles both /fabric.msf and MVSF
+      // Create a single HTTP server
       const server = http.createServer((req, res) => {
         if (req.url === '/fabric.msf') {
           const filePath = path.join(__dirname, 'fabric.msf');
@@ -51,8 +51,8 @@ class MVSF_Map {
             }
           });
         } else {
-          // Let MVSF handle all other requests
-          this.#pServer.OnRequest(req, res);
+          // Let MVSF handle everything else
+          this.#pServer.ServeHTTP(req, res);
         }
       });
 
