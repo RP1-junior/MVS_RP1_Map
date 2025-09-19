@@ -55,4 +55,29 @@ Settings.MVSF.nPort = process.env.PORT || 3000;
    }
 }
 
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+
+http.createServer((req, res) => {
+  if (req.url === '/fabric.msf') {
+    const filePath = path.join(__dirname, 'fabric.msf');
+    fs.readFile(filePath, (err, data) => {
+      if (err) {
+        res.writeHead(404);
+        res.end('File not found');
+      } else {
+        res.writeHead(200, { 'Content-Type': 'application/octet-stream' });
+        res.end(data);
+      }
+    });
+  } else {
+    res.writeHead(404);
+    res.end('Not found');
+  }
+}).listen(3000, () => {
+  console.log('Server running at http://localhost:3000');
+});
+
+
 const g_pServer = new MVSF_Map ();
