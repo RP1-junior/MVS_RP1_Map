@@ -22,16 +22,15 @@ class MVSF_Map
    {
       switch (Settings.SQL.type)
       {
-      case 'MSSQL':
+      case 'MYSQL':
          Settings.SQL.config.host= process.env.MYSQLHOST;
          Settings.SQL.config.port= process.env.MYSQLPORT;
          Settings.SQL.config.user= process.env.MYSQLUSER;
          Settings.SQL.config.password= process.env.MYSQLPASSWORD;
          Settings.SQL.config.database= process.env.MYSQLDATABASE;
-         this.#pSQL = new MVSQL_MSSQL (Settings.SQL.config, this.onSQLReady.bind (this)); break;
-      // case 'MYSQL':              this.#pSQL = new MVSQL_MYSQL (Settings.SQL.config, this.onSQLReady.bind (this)); break;
+         this.#pSQL = new MVSQL_MYSQL (Settings.SQL.config, this.onSQLReady.bind (this)); break;
       default:
-         pMVSQL = null;
+         console.log('No database was configured for this service and it is required.');
          break;
       }
    }
