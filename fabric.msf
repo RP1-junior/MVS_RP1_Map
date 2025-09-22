@@ -1,7 +1,0 @@
-{
-   "map": {
-      "namespace": "metaversal/rp1_map_cache",
-      "service": "MVIO",
-      "connect": "secure=true;server=mvsrp1map-production.up.railway.app:8080;session=RP1"
-   }
-}

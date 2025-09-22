@@ -20,10 +20,13 @@ function MemResult (pResult, result)
       pResult.Parent = JSON.parse (result.recordsets[0][0].Object);
       pResult.aChild = [];
 
-      let aChild = result.recordsets[1];
-      for (let i=0; i < aChild.length; i++)
+      for (let i=1; i < result.recordsets.length; i++)
       {
-         pResult.aChild[i] = JSON.parse (aChild[i].Object);
+         pResult.aChild[i-1] = [];
+         for (let j=0; j < result.recordsets[i].length; j++)
+         {
+            pResult.aChild[i-1].push (JSON.parse (result.recordsets[i][j].Object));
+         }
       }
    }
    else RawResult (pResult, result);
@@ -43,11 +46,11 @@ function RunQuery (Session, pData, fnRSP, fn, pSQLData)
 {
    let pResult = { nResult: -1, aResultSet: [] };
 
-   const sQuery = g_pMVSQL.Compose (pSQLData.sProc, pData, pSQLData.aData, Session.sIPAddress);
+   const Query = g_pMVSQL.Compose (pSQLData.sProc, pData, pSQLData.aData, Session.sIPAddress);
 
-   if (sQuery)
+   if (Query)
    {
-      g_pMVSQL.Exec (sQuery).then
+      g_pMVSQL.Exec (Query).then
       (
          (result) =>
          {
@@ -72,11 +75,11 @@ function RunQuery2Ex (Session, pData, fnRSP, fn, bRecover, pSQLData)
 
    if (true) //Session.bRP1 && (pSQLData.Param || Session.bGuest == 0))
    {
-      const sQuery = g_pMVSQL.Compose (pSQLData.sProc, pData, pSQLData.aData, Session.sIPAddress, (Session.twRPersonaIx ? Session.twRPersonaIx : 0), 2);
+      const Query = g_pMVSQL.Compose (pSQLData.sProc, pData, pSQLData.aData, Session.sIPAddress, (Session.twRPersonaIx ? Session.twRPersonaIx : 0), 2);
 
-      if (sQuery)
+      if (Query)
       {
-         g_pMVSQL.Exec (sQuery).then
+         g_pMVSQL.Exec (Query).then
          (
             (result) =>
             {
@@ -90,9 +93,9 @@ function RunQuery2Ex (Session, pData, fnRSP, fn, bRecover, pSQLData)
                      let sChannelName = pObjectHead.wClass_Object + '-' + pObjectHead.twObjectIx;
 
                      Session.socket.join (sChannelName);
-                     Session.socket.emit ('recover',
+                     Session.socket.emit ('recover', 
                         {
-                           nResult:    result.output.nResult,
+                           nResult:    result.output.nResult, 
                            aResultSet: result.recordsets,
                         }
                      );
@@ -104,9 +107,9 @@ if (pSQLData.Param == 0)
 else
    RawResult (pResult, result);
 //                     pResult.aResultSet = result.recordsets;
-
+                     
 //                     EventFetch ();
-                  }
+                  } 
 
                   pResult.nResult = result.output.nResult;
                }
@@ -132,6 +135,7 @@ function RunQuery2 (Session, pData, fnRSP, fn, pSQLData)
 function EventQueue (pServer)
 {
    g_nTimeout = 0;
+
    let Query = g_pMVSQL.ComposeETL ('etl_Events');
 
    g_pMVSQL.Exec (Query).then
@@ -145,9 +149,9 @@ function EventQueue (pServer)
             for (let i=0; i < aRow.length; i++)
             {
                pObject = JSON.parse (aRow[i].Object);
-
+   
                let sChannelName = 'GLOBALREFRESH'; //pObject.pControl.wClass_Object + '-' + pObject.pControl.twObjectIx;
-
+   
                g_pServer.io.in (sChannelName).emit ('refresh', pObject);
             }
 
@@ -155,7 +159,7 @@ function EventQueue (pServer)
             {
                setTimeout (EventQueue, 0);
             }
-         }
+         } 
       }
    );
 }
@@ -168,12 +172,18 @@ function EventFetch ()
    }
 }
 
+function Test (fn, Result)
+{
+   console.log ('Result: ', Result);
+}
+
 function InitSQL (pSQL, pServer, pInfo)
 {
    g_pMVSQL  = pSQL;
    g_pServer = pServer;
    g_pInfo   = pInfo;
 
+//RunQuery2 ({ sIPAddress: '10.10.1.100' }, { twRMRootIx: 1 }, Test, null, { sProc: 'get_RMRoot_Update', aData: [ 'twRMRootIx' ], Param: 0 });
    setInterval (EventFetch, 1000);
 }
 

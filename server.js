@@ -1,9 +1,12 @@
-const { MVSF, CreateMVSQL } = require ('@metaversalcorp/mvsf');
+// const { MVSF         } = require ('@metaversalcorp/mvsf');
+// const { MV           } = require ('@metaversalcorp/mvmf');
 const { InitSQL      } = require ('./utils.js');
-const Settings = require ('./settings.json');
+const Settings      = require ('./settings.json');
 
 // const { MVSQL_MSSQL  } = require ('@metaversalcorp/mvsql_mssql');
 const { MVSQL_MYSQL  } = require ('@metaversalcorp/mvsql_mysql');
+
+// require ('@metaversalcorp/mvrp_rds');
 
 /*******************************************************************************************************************************
 **                                                     Main                                                                   **
@@ -13,26 +16,23 @@ class MVSF_Map
    #pServer;
    #pRDS;
    #pSQL;
-//   #pRequire;
+   // #pRequire;
 
    constructor ()
    {
-      switch (Settings.SQL.type) {
-//         case 'MSSQL':
-//            this.#pSQL = new MVSQL_MSSQL(Settings.SQL, this.onSQLReady.bind(this));
-//            break;
-         case 'MYSQL':
-               Settings.SQL.config.host= process.env.MYSQLHOST;
-               Settings.SQL.config.port= process.env.MYSQLPORT;
-               Settings.SQL.config.user= process.env.MYSQLUSER;
-               Settings.SQL.config.password= process.env.MYSQLPASSWORD;
-               Settings.SQL.config.database= process.env.MYSQLDATABASE;
-               console.log('setting: ', Settings.SQL.config);
-            this.#pSQL = new MVSQL_MYSQL(Settings.SQL.config, this.onSQLReady.bind(this));
-            break;
-         default:
-            pMVSQL = null;
-            break;
+      switch (Settings.SQL.type)
+      {
+      case 'MSSQL':
+         Settings.SQL.config.host= process.env.MYSQLHOST;
+         Settings.SQL.config.port= process.env.MYSQLPORT;
+         Settings.SQL.config.user= process.env.MYSQLUSER;
+         Settings.SQL.config.password= process.env.MYSQLPASSWORD;
+         Settings.SQL.config.database= process.env.MYSQLDATABASE;
+         this.#pSQL = new MVSQL_MSSQL (Settings.SQL.config, this.onSQLReady.bind (this)); break;
+      // case 'MYSQL':              this.#pSQL = new MVSQL_MYSQL (Settings.SQL.config, this.onSQLReady.bind (this)); break;
+      default:
+         pMVSQL = null;
+         break;
       }
    }
 
@@ -40,9 +40,13 @@ class MVSF_Map
    {
       if (pMVSQL)
       {
-//         this.#pRequire = MV.MVMF.Core.Require ('MVRP_RDS');
+         // this.#pRequire = MV.MVMF.Core.Require ('MVRP_RDS');
+
+         this.#pRDS = null; //new MV.MVRP.RDS.CLIENT (Settings.RDS);
+         // this.#pRDS.Attach (this);
+
 Settings.MVSF.nPort = process.env.PORT || 3000;
-         this.#pServer = new MVSF (Settings.MVSF, require ('./handler.json'), __dirname, null, 'application/json');
+         this.#pServer = new MVSF (Settings.MVSF, require ('./handler.json'), __dirname, this.#pRDS, 'application/json');
          this.#pServer.Run ();
 
          console.log ('SQL Server READY');

@@ -1,6 +1,6 @@
 {
    "name": "mvsrp1map",
-   "version": "1.18.4",
+   "version": "1.18.6",
    "description": "MV Database Map",
    "main": "server.js",
    "scripts": {
