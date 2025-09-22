@@ -1,4 +1,4 @@
-// const { MVSF         } = require ('@metaversalcorp/mvsf');
+const { MVSF         } = require ('@metaversalcorp/mvsf');
 // const { MV           } = require ('@metaversalcorp/mvmf');
 const { InitSQL      } = require ('./utils.js');
 const Settings      = require ('./settings.json');
