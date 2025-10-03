@@ -52,7 +52,7 @@ class MVSF_Map
          this.ReadFromEnv (Settings.MVSF, [ "nPort" ]);
 
          this.#pServer = new MVSF (Settings.MVSF, require ('./handler.json'), __dirname, null, 'application/json');
-         this.#pServer.LoadHtmlPath (__dirname, [ './web/admin', './web/public']);
+         this.#pServer.LoadHtmlSite (__dirname, [ './web/admin', './web/public']);
          this.#pServer.Run ();
 
          console.log ('SQL Server READY');
