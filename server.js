@@ -1,12 +1,8 @@
 const { MVSF         } = require ('@metaversalcorp/mvsf');
-// const { MV           } = require ('@metaversalcorp/mvmf');
 const { InitSQL      } = require ('./utils.js');
 const Settings      = require ('./settings.json');
 
-// const { MVSQL_MSSQL  } = require ('@metaversalcorp/mvsql_mssql');
 const { MVSQL_MYSQL  } = require ('@metaversalcorp/mvsql_mysql');
-
-// require ('@metaversalcorp/mvrp_rds');
 
 /*******************************************************************************************************************************
 **                                                     Main                                                                   **
@@ -14,24 +10,38 @@ const { MVSQL_MYSQL  } = require ('@metaversalcorp/mvsql_mysql');
 class MVSF_Map
 {
    #pServer;
-   #pRDS;
    #pSQL;
-   // #pRequire;
 
    constructor ()
    {
+      this.ReadFromEnv (Settings.SQL.config, [ "host", "port", "user", "password", "database" ]);
+
       switch (Settings.SQL.type)
       {
       case 'MYSQL':
-         Settings.SQL.config.host= process.env.MYSQLHOST;
-         Settings.SQL.config.port= process.env.MYSQLPORT;
-         Settings.SQL.config.user= process.env.MYSQLUSER;
-         Settings.SQL.config.password= process.env.MYSQLPASSWORD;
-         Settings.SQL.config.database= process.env.MYSQLDATABASE;
-         this.#pSQL = new MVSQL_MYSQL (Settings.SQL.config, this.onSQLReady.bind (this)); break;
-      default:
-         console.log('No database was configured for this service and it is required.');
+         this.#pSQL = new MVSQL_MYSQL (Settings.SQL.config, this.onSQLReady.bind (this)); 
          break;
+
+      default:
+         console.log ('No Database was configured for this service.');
+         break;
+      }
+   }
+
+   #GetToken (sToken) 
+   {
+      const match = sToken.match (/<([^>]+)>/);
+      return match ? match[1] : null;
+   }
+
+   ReadFromEnv (Config, aFields)
+   {
+      let sValue;
+      
+      for (let i=0; i < aFields.length; i++)
+      {
+         if ((sValue = this.#GetToken (Config[aFields[i]])) != null)
+            Config[aFields[i]] = process.env[sValue];
       }
    }
 
@@ -39,13 +49,10 @@ class MVSF_Map
    {
       if (pMVSQL)
       {
-         // this.#pRequire = MV.MVMF.Core.Require ('MVRP_RDS');
+         this.ReadFromEnv (Settings.MVSF, [ "nPort" ]);
 
-         this.#pRDS = null; //new MV.MVRP.RDS.CLIENT (Settings.RDS);
-         // this.#pRDS.Attach (this);
-
-Settings.MVSF.nPort = process.env.PORT || 3000;
-         this.#pServer = new MVSF (Settings.MVSF, require ('./handler.json'), __dirname, this.#pRDS, 'application/json');
+         this.#pServer = new MVSF (Settings.MVSF, require ('./handler.json'), __dirname, null, 'application/json');
+         this.#pServer.LoadHtmlPath (__dirname, [ './web/admin', './web/public']);
          this.#pServer.Run ();
 
          console.log ('SQL Server READY');

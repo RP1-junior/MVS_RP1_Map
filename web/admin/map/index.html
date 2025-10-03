@@ -1,0 +1,212 @@
+<html>
+   <head>
+      <script type="text/javascript" src="js/vendor/jquery-3.7.1.min.js"></script>
+      <script type="text/javascript" src="https://cdn2_david.rp1.dev/v0.0.1/js/cdn.socket.io_4.8.1_socket.io.min.js"></script>
+      <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+      <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
+      <script src="https://unpkg.com/aframe-orbit-controls@1.3.2/dist/aframe-orbit-controls.min.js"></script>
+
+      <script type="text/javascript" src="https://cdn2_david.rp1.dev/v0.0.1/js/mv/MVMF.js"></script>
+      <script type="text/javascript" src="https://cdn2_david.rp1.dev/v0.0.1/js/mv/MVSB.js"></script>
+      <script type="text/javascript" src="https://cdn2_david.rp1.dev/v0.0.1/js/mv/MVRest.js"></script>
+      <script type="text/javascript" src="https://cdn2_david.rp1.dev/v0.0.1/js/mv/MVIO.js"></script>
+      <script type="text/javascript" src="https://cdn2_david.rp1.dev/v0.0.1/js/mv/MVXP.js"></script>
+      <script type="text/javascript" src="https://cdn2_david.rp1.dev/v0.0.1/js/mv/MVRP.js"></script>
+      <script type="text/javascript" src="https://cdn2_david.rp1.dev/v0.0.1/js/mv/MVRP_Dev.js"></script>
+      <script type="text/javascript" src="https://cdn2_david.rp1.dev/v0.0.1/js/mv/MVRP_Fabric.js"></script>
+      <script type="text/javascript" src="https://cdn2_david.rp1.dev/v0.0.1/js/mv/MVRP_Map.js"></script>
+      <script type="text/javascript" src="js/fabricview.js"></script>
+      <script type="text/javascript" src="js/points.js"></script>
+      
+      <link rel="stylesheet" href="css/sw.css">
+      
+      <script type="text/javascript">
+         var g_pExtractMap;
+         $(document).ready 
+         (
+            function () 
+            {
+               let jForm = $('.jsForm');
+               let jName         = jForm.find ('.jsName');
+               let jsObjectType  = jForm.find ('.jsObjectType');
+               let jsObjectIx    = jForm.find ('.jsObjectIx');
+               
+               jForm.on
+               (
+                  "submit", 
+                  function(event) 
+                  {
+                     if (g_pExtractMap)
+                        g_pExtractMap.destructor ();
+
+                     g_pExtractMap = new ExtractMap (jName.val (), jsObjectType.val (), jsObjectIx.val ());
+                     event.preventDefault();
+                  }
+               );
+            }
+         );
+      </script>
+   </head>   
+   <body>
+      <div class="body">
+         <form class="jsForm">
+            <table>
+               <tr>
+                  <td>
+                     <label for="msf">MSF File:</label>
+                     <input type="text" id="msf" class="jsName" size="64">
+                  </td>
+                  <td>
+                      <label for="objecttype">Object Type:</label>
+                      <select id="objecttype" class="jsObjectType">
+                         <option value="71">RMCObject</option>
+                         <option value="73">RMPObject</option>
+                         <option value="72">RMTObject</option>
+                      </select>
+                  </td>
+                  <td>
+                      <label for="objectix">Default ObjectIx:</label>
+                      <input type="text" class="jsObjectIx">
+                  </td>
+                  <td>
+                      <input type="submit" value="Go">
+                  </td>
+               </tr>
+            </table>
+         </form>
+         <div class="toggle-controls-container">
+            <button id="toggleControlsBtn">Switch to Orbit Controls</button>
+         </div>
+         <div class="body-container">
+            <div class="left-container">
+               <div class="level-container jsRoot"></div>   
+            </div>
+            <hr class="divider">
+            <div class="right-container jsRight">
+               <div class="jsProp">
+                  <div class="header jsName"></div>
+                  <div class="subheader jsType"></div>
+               </div>
+               <div class="prop-container">
+                  <div class="detail-container">
+                     <h2 style="font-size:17px;" class="subtitle">Transform</h2>
+                     <div class="detail jsTransform">
+                        <div class="coord">Position: <span class="jsPos"></span></div>
+                        <div class="coord">Rotation: <span class="jsRot"></span></div>
+                        <div class="coord">Scale: <span class="jsScale"></span></div>
+                     </div>
+                  </div>
+                  <div class="detail-container">
+                     <h2 style="font-size:17px;" class="subtitle">Type</h2>
+                     <div class="detail jsTransform">
+                        <div class="coord">Type: <span class="jsType"></span></div>
+                        <div class="coord">SubType: <span class="jsSubtype"></span></div>
+                        <div class="coord">Fiction: <span class="jsFiction"></span></div>
+                     </div>
+                  </div>
+                  <div class="detail-container">
+                     <h1 style="font-size:17px;" class="subtitle">Resource</h1>
+                     <div class="detail jsResource">
+                        <div class="item">qwResourceIx: <span class="jsResourceIx"></span></div>
+                        <div class="item">Name: <span class="jsName"></span></div>
+                        <div class="item">Reference: <span class="jsReference"></span></div>
+                     </div>
+                  </div>
+               </div>
+               <a-scene background="color: #ECECEC" inspector="" keyboard-shortcuts="" screenshot="" xr-mode-ui="" device-orientation-permission-ui="" embedded>
+                  <a-entity id="MyEntity" camera look-controls wasd-controls orbit-controls="target: 0 0 0; minDistance: 2; maxDistance: 180; initialPosition: 0 0 8; rotateSpeed: 0.5" position="0 0 8"></a-entity>
+                  <a-entity light="type: ambient; intensity: 0.5"></a-entity>
+                  <a-entity light="type: directional; intensity: 0.8" position="1 2 1"></a-entity>
+                  <a-entity spawn-cones keyboard-rotate="speed: 5"></a-entity>
+               </a-scene>
+            </div>
+         </div>
+         <template id="tmpl_navigate">      
+            <div class="level jsLevel">
+               <span class="tree-triangle">+</span>
+               <span class="tree-label"></span>
+               <div class="tree-children"></div>
+            </div>
+         </template>
+      </div>
+   </body>
+</html>
+
+<script type="text/javascript">
+  $(function() {
+    var sceneEl = document.querySelector('a-scene');
+    var cameraId = 'MyEntity';
+    function createCamera(mode, pos, rot) {
+      // Remove old camera if it exists
+      var oldCam = document.getElementById(cameraId);
+      if (oldCam) oldCam.parentNode.removeChild(oldCam);
+      // Create new camera entity
+      var cam = document.createElement('a-entity');
+      cam.setAttribute('id', cameraId);
+      cam.setAttribute('camera', '');
+      if (mode === 'orbit') {
+        cam.setAttribute('orbit-controls', 'target: 0 0 0; minDistance: 2; maxDistance: 180; rotateSpeed: 0.5');
+        cam.setAttribute('look-controls', 'enabled: false');
+      } else {
+        cam.setAttribute('wasd-controls', 'enabled: true');
+        cam.setAttribute('look-controls', 'enabled: true');
+      }
+      sceneEl.appendChild(cam);
+      cam.dataset.mode = mode;
+      // Set position and rotation after the camera is loaded and controls are initialized
+      cam.addEventListener('loaded', function() {
+        setTimeout(function() {
+          if (pos) {
+            cam.object3D.position.set(pos.x, pos.y, pos.z);
+          }
+          if (rot) {
+            cam.object3D.rotation.set(
+              THREE.MathUtils.degToRad(rot.x),
+              THREE.MathUtils.degToRad(rot.y),
+              THREE.MathUtils.degToRad(rot.z)
+            );
+          }
+        }, 150);
+      });
+      return cam;
+    }
+    function setControls(mode) 
+    {
+      var oldCam = document.getElementById(cameraId);
+      var pos = oldCam ? oldCam.getAttribute('position') : {x:0, y:0, z:8};
+      var rot = oldCam ? oldCam.getAttribute('rotation') : {x:0, y:0, z:0};
+      var cam = createCamera(mode, pos, rot);
+      $('#toggleControlsBtn').text(mode === 'orbit' ? 'Switch to WASD Controls' : 'Switch to Orbit Controls');
+    }
+    // Initial mode: WASD
+    setControls('wasd');
+    $('#toggleControlsBtn').on
+    (
+      'click', 
+      function() 
+      {
+         var cam = document.getElementById(cameraId);
+         var mode = cam && cam.dataset.mode === 'orbit' ? 'wasd' : 'orbit';
+         setControls(mode);
+      }
+   );
+
+    $(document).on
+    (
+      'keydown', 
+      function (e) 
+      {
+         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+         var cam = document.getElementById(cameraId);
+         if (e.key === 'o' || e.key === 'O') 
+         {
+            setControls('orbit');
+         } 
+         else if (e.key === 'm' || e.key === 'M') 
+         {
+            setControls('wasd');
+         }
+      }
+   );
+  });
+</script>

@@ -1,7 +1,7 @@
 {
    "_comment1": "'MVSF' contains Server Config Information for MVSF",
    "MVSF": {
-      "nPort": "2000",
+      "nPort": "<PORT>",
 
       "_comment1": "If your server is using SSL, rename '_SSL' to 'SSL'",
       "_SSL": {
@@ -19,11 +19,11 @@
       "type": "MYSQL",
       "config": {
          "connectionLimit":  10,
-         "host":             "la2-mysql0.mv.local",
-         "port":             3306,
-         "user":             "dsernaque",
-         "password":         "$pyHunt2013",
-         "database":         "mvd_rp1_map",
+         "host":             "<MYSQLHOST>",
+         "port":             "<MYSQLPORT>",
+         "user":             "<MYSQLUSER>",
+         "password":         "<MYSQLPASSWORD>",
+         "database":         "<MYSQLDATABASE>",
          "multipleStatements": true
       }
    },
@@ -32,11 +32,7 @@
    "_SQL": {
       "type": "MSSQL",
       "config": {
-         "connectionString": "Driver=SQL Server;Server=la2-demo37;Database=MVD_RP1_Map_Earth;Trusted_Connection=yes;"
+         "connectionString": "Driver=SQL Server;Server=<DBHOST>;Database=<DBNAME>;Trusted_Connection=yes;"
       }
-   },
-
-   "Info": {
-      "sector": "\\\\cdn-web0\\earth0\\"
    }
 }

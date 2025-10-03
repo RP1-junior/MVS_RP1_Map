@@ -1,6 +1,6 @@
 {
    "name": "mvsrp1map",
-   "version": "1.18.6",
+   "version": "1.0.0",
    "description": "MV Database Map",
    "main": "server.js",
    "scripts": {
@@ -9,7 +9,7 @@
    },
    "repository": {
       "type": "git",
-      "url": "https://github.com/MetaversalCorp/MVS_RP1_Map.git"
+      "url": "https://github.com/MetaversalCorp/MVS_Sample.git"
    },
    "author": "Metaversal Corporation",
    "license": "ISC",
