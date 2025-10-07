@@ -9,7 +9,6 @@
 <body>
 
 <div id="ui">
-<input type="file" id="file"><br>
 <button id="translate">Translate (W)</button>
 <button id="rotate">Rotate (E)</button>
 <button id="scale">Scale (R)</button>
@@ -44,6 +43,17 @@
   Click model – Focus it<br>
   Double‑click empty – Reset to canvas<br>
   H – Toggle this help
+</div>
+
+<div id="objectLibrary">
+  <div id="objectLibraryHeader">
+    <strong>Object Library</strong>
+    <button id="refreshLibrary">Refresh</button>
+  </div>
+  <div id="objectLibraryContent">
+    <div id="objectLibraryLoading">Loading objects...</div>
+    <div id="objectLibraryItems"></div>
+  </div>
 </div>
 
 <!-- Core Three.js -->

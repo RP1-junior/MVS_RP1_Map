@@ -10,7 +10,7 @@
       },
 
       "_comment2": "If your server is running REST AND requires a prefix to endpoint rename _REST to REST, and specify Prefix",
-      "_REST": {
+      "REST": {
          "sPrefix": ""
       }
    },

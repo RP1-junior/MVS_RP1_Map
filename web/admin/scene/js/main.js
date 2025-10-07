@@ -59,7 +59,6 @@ scene.add(humanGuide);
 
 // ===== UI refs =====
 const loader = new THREE.GLTFLoader();
-const fileInput = document.getElementById("file");
 const modelList = document.getElementById("modelList");
 const propertiesPanel = document.getElementById("properties");
 const snapCheckbox = document.getElementById("snap");
@@ -70,6 +69,11 @@ const btnScale = document.getElementById("scale");
 const btnDelete = document.getElementById("delete");
 const btnUndo = document.getElementById("undo");
 const btnResetCamera = document.getElementById("resetCamera");
+
+// Object Library refs
+const objectLibraryLoading = document.getElementById("objectLibraryLoading");
+const objectLibraryItems = document.getElementById("objectLibraryItems");
+const refreshLibraryBtn = document.getElementById("refreshLibrary");
 
 let modelCounter = 1;
 
@@ -784,33 +788,316 @@ function fitModelToMaxHeight(obj, maxHeightMeters=HUMAN_HEIGHT){
 }
 
 
-// ===== File loading (preserve original pivot & transform) =====
-fileInput.addEventListener("change", e=>{
-  const file = e.target.files[0]; if(!file) return;
-  const url = URL.createObjectURL(file);
-  loader.load(url, gltf=>{
+// ===== Object Library =====
+let availableObjects = [];
+
+function loadObjectLibrary() {
+  console.log('🔄 Loading object library...');
+  objectLibraryLoading.style.display = 'block';
+  objectLibraryItems.style.display = 'none';
+  
+  // Load from static JSON file
+  console.log('📁 Loading objects from static file: /objects/index.json');
+  fetch('/objects/index.json')
+    .then(response => {
+      console.log('📁 Static file Response Status:', response.status, response.statusText);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    })
+    .then(data => {
+      if (data && data.success) {
+        console.log('✅ Static file Success - Received data:', data);
+        
+        // Update URLs to include full domain
+        const currentDomain = window.location.origin;
+        availableObjects = data.objects.map(obj => ({
+          ...obj,
+          url: obj.url.startsWith('http') ? obj.url : `${currentDomain}${obj.path}`
+        }));
+        
+        console.log(`✅ Found ${availableObjects.length} objects:`, availableObjects.map(o => o.name));
+        console.log('🌐 Updated URLs with domain:', availableObjects.map(o => o.url));
+        renderObjectLibrary();
+      } else {
+        console.error('❌ Static file returned success=false or no data');
+        objectLibraryLoading.textContent = 'No objects available';
+      }
+    })
+    .catch(error => {
+      console.error('❌ Failed to load objects:', error);
+      objectLibraryLoading.textContent = 'Error loading objects';
+    });
+}
+
+function renderObjectLibrary() {
+  objectLibraryLoading.style.display = 'none';
+  objectLibraryItems.style.display = 'flex';
+  objectLibraryItems.innerHTML = '';
+  
+  if (availableObjects.length === 0) {
+    objectLibraryItems.innerHTML = '<div style="color: #ccc; font-size: 12px; padding: 20px; text-align: center;">No objects found in /objects folder</div>';
+    return;
+  }
+  
+  availableObjects.forEach(obj => {
+    const item = document.createElement('div');
+    item.className = 'objectLibraryItem';
+    
+    // Create preview element
+    const previewDiv = document.createElement('div');
+    previewDiv.className = 'objectPreview';
+    previewDiv.innerHTML = '<div class="previewLoading">Loading...</div>';
+    
+    item.innerHTML = `
+      <div class="objectName">${obj.name}</div>
+      <div class="objectType">${obj.type}</div>
+    `;
+    
+    item.appendChild(previewDiv);
+    
+    // Load preview
+    loadObjectPreview(obj, previewDiv);
+    
+    item.addEventListener('click', () => {
+      loadObjectFromLibrary(obj);
+    });
+    
+    objectLibraryItems.appendChild(item);
+  });
+}
+
+function loadObjectPreview(obj, previewDiv) {
+  console.log('🖼️ Loading preview for:', obj.name);
+  
+  // Create a temporary scene for preview
+  const previewScene = new THREE.Scene();
+  const previewCamera = new THREE.PerspectiveCamera(50, 1, 0.1, 1000);
+  const previewRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  
+  previewRenderer.setSize(60, 60);
+  previewRenderer.setClearColor(0x000000, 0);
+  previewDiv.appendChild(previewRenderer.domElement);
+  
+  // Add basic lighting
+  previewScene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1));
+  const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+  dirLight.position.set(5, 10, 7);
+  previewScene.add(dirLight);
+  
+  // Load the model with case-insensitive fallback
+  const loadPreview = (url) => {
+    loader.load(url, gltf => {
+      console.log('✅ Preview loaded for:', obj.name);
+      const model = gltf.scene.clone();
+      
+      // Calculate bounding box and center the model
+      const box = new THREE.Box3().setFromObject(model);
+      const center = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
+      
+      // Center the model
+      model.position.sub(center);
+      
+      // Scale to fit in preview
+      const maxDim = Math.max(size.x, size.y, size.z);
+      const scale = 1.5 / maxDim;
+      model.scale.setScalar(scale);
+      
+      previewScene.add(model);
+      
+      // Position camera to look at the model
+      previewCamera.position.set(2, 2, 2);
+      previewCamera.lookAt(0, 0, 0);
+      
+      // Render the preview
+      previewRenderer.render(previewScene, previewCamera);
+      
+      // Clean up loading text
+      const loadingText = previewDiv.querySelector('.previewLoading');
+      if (loadingText) {
+        loadingText.remove();
+      }
+      
+    }, undefined, error => {
+      console.warn('⚠️ Preview failed for:', obj.name, 'trying case variations:', error.message);
+      
+      // Try case-insensitive alternatives for preview
+      const basePath = obj.path.replace(/\/[^\/]+$/, '/');
+      const originalFilename = obj.filename;
+      
+      const variations = [
+        originalFilename.toLowerCase(),
+        originalFilename.toUpperCase(),
+        originalFilename.charAt(0).toUpperCase() + originalFilename.slice(1).toLowerCase(),
+        originalFilename.charAt(0).toLowerCase() + originalFilename.slice(1)
+      ].filter(variation => variation !== originalFilename);
+      
+      let attempts = 0;
+      const tryNextPreviewVariation = () => {
+        if (attempts >= variations.length) {
+          console.warn('⚠️ All preview variations failed for:', obj.name);
+          previewDiv.innerHTML = '<div class="previewError">Preview<br>Failed</div>';
+          return;
+        }
+        
+        const variation = variations[attempts];
+        const variationUrl = `${window.location.origin}${basePath}${variation}`;
+        
+        console.log(`🔄 Preview attempt ${attempts + 1}: Trying ${variationUrl}`);
+        
+        loader.load(variationUrl, gltf => {
+          console.log('✅ Preview loaded with case variation:', obj.name, 'using:', variation);
+          const model = gltf.scene.clone();
+          
+          const box = new THREE.Box3().setFromObject(model);
+          const center = box.getCenter(new THREE.Vector3());
+          const size = box.getSize(new THREE.Vector3());
+          
+          model.position.sub(center);
+          const maxDim = Math.max(size.x, size.y, size.z);
+          const scale = 1.5 / maxDim;
+          model.scale.setScalar(scale);
+          
+          previewScene.add(model);
+          previewCamera.position.set(2, 2, 2);
+          previewCamera.lookAt(0, 0, 0);
+          previewRenderer.render(previewScene, previewCamera);
+          
+          const loadingText = previewDiv.querySelector('.previewLoading');
+          if (loadingText) {
+            loadingText.remove();
+          }
+          
+        }, undefined, error => {
+          attempts++;
+          console.warn(`⚠️ Preview variation ${variation} failed:`, error.message);
+          tryNextPreviewVariation();
+        });
+      };
+      
+      tryNextPreviewVariation();
+    });
+  };
+  
+  loadPreview(obj.url);
+}
+
+function loadObjectFromLibrary(obj) {
+  console.log('🎯 Loading object from library:', obj);
+  console.log('🎯 Object URL:', obj.url);
+  
+  // Try the original URL first
+  loader.load(obj.url, gltf => {
+    console.log('✅ Successfully loaded GLTF:', obj.name);
     const model = gltf.scene;
     model.userData.isSelectable = true;
-    model.name = (file.name || ("Model "+modelCounter++)).replace(/\.[^/.]+$/, "");
-    // Track original source for export/reference reuse
+    model.name = obj.name;
+    
+    // Track original source for export/reference reuse with full URL
     model.userData.sourceRef = {
-      originalFileName: file.name,
-      baseName: model.name,
-      reference: model.name + ".glb"
+      originalFileName: obj.filename,
+      baseName: obj.name,
+      reference: obj.url, // Full URL path
+      path: obj.path
     };
+    
+    console.log('📝 Model sourceRef set to:', model.userData.sourceRef);
+    
     createBoxHelperFor(model);
-
+    
     // Enforce maximum height relative to human guide
     fitModelToMaxHeight(model, HUMAN_HEIGHT);
     scene.add(model);
-
+    
     addModelToList(model, model.name);
     storeInitialTransform(model);
     selectObject(model);
     updateBoxHelper(model);
     frameCameraOn(model);
     saveState();
+    
+    console.log('✅ Object added to scene successfully:', model.name);
+  }, undefined, error => {
+    console.warn('⚠️ Failed to load with original URL, trying case-insensitive alternatives:', error.message);
+    
+    // Try case-insensitive alternatives
+    const basePath = obj.path.replace(/\/[^\/]+$/, '/');
+    const originalFilename = obj.filename;
+    
+    // Generate case variations
+    const variations = [
+      originalFilename.toLowerCase(),
+      originalFilename.toUpperCase(),
+      originalFilename.charAt(0).toUpperCase() + originalFilename.slice(1).toLowerCase(),
+      originalFilename.charAt(0).toLowerCase() + originalFilename.slice(1)
+    ].filter(variation => variation !== originalFilename);
+    
+    console.log('🔄 Trying case variations:', variations);
+    
+    // Try each variation
+    let attempts = 0;
+    const tryNextVariation = () => {
+      if (attempts >= variations.length) {
+        console.error('❌ All case variations failed for:', obj.name);
+        alert(`Failed to load ${obj.name}: File not found (tried case variations)`);
+        return;
+      }
+      
+      const variation = variations[attempts];
+      const variationUrl = `${window.location.origin}${basePath}${variation}`;
+      
+      console.log(`🔄 Attempt ${attempts + 1}: Trying ${variationUrl}`);
+      
+      loader.load(variationUrl, gltf => {
+        console.log('✅ Successfully loaded GLTF with case variation:', obj.name, 'using:', variation);
+        const model = gltf.scene;
+        model.userData.isSelectable = true;
+        model.name = obj.name;
+        
+        // Track original source for export/reference reuse with full URL
+        model.userData.sourceRef = {
+          originalFileName: obj.filename,
+          baseName: obj.name,
+          reference: variationUrl, // Use the working URL
+          path: `${basePath}${variation}`
+        };
+        
+        console.log('📝 Model sourceRef set to:', model.userData.sourceRef);
+        
+        createBoxHelperFor(model);
+        
+        // Enforce maximum height relative to human guide
+        fitModelToMaxHeight(model, HUMAN_HEIGHT);
+        scene.add(model);
+        
+        addModelToList(model, model.name);
+        storeInitialTransform(model);
+        selectObject(model);
+        updateBoxHelper(model);
+        frameCameraOn(model);
+        saveState();
+        
+        console.log('✅ Object added to scene successfully:', model.name);
+      }, undefined, error => {
+        attempts++;
+        console.warn(`⚠️ Variation ${variation} failed:`, error.message);
+        tryNextVariation();
+      });
+    };
+    
+    tryNextVariation();
   });
+}
+
+// Initialize object library
+loadObjectLibrary();
+
+// Refresh button event
+refreshLibraryBtn.addEventListener('click', () => {
+  console.log('🔄 Refresh button clicked - reloading object library');
+  loadObjectLibrary();
 });
 
 // ===== Attach / Detach =====
@@ -2311,6 +2598,7 @@ function deselectAllSidebar(){
 
 // ===== Export JSON (quaternions) =====
 document.getElementById("exportJson").onclick = ()=>{
+  console.log('📤 Exporting JSON - scanning scene for objects...');
   function buildNode(obj){
     if (!obj.userData?.isSelectable) return null;
     const box = new THREE.Box3().setFromObject(obj);
@@ -2348,6 +2636,8 @@ document.getElementById("exportJson").onclick = ()=>{
       aBound: [size.x, size.y, size.z],
       aChildren: []
     };
+    
+    console.log(`📤 Exporting object "${baseName}" with sReference:`, node.pResource.sReference);
 
     if (obj instanceof THREE.Group) {
       // For editor groups, skip the first child (parent object) and only export other children

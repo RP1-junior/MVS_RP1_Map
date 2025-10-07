@@ -172,4 +172,127 @@ body {
   background: #444;
 }
 
+/* Object Library Styles */
+#objectLibrary {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  right: 10px;
+  z-index: 10;
+  background: rgba(0, 0, 0, 0.8);
+  border-radius: 4px;
+  max-height: 200px;
+  overflow: hidden;
+}
+
+#objectLibraryHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.6);
+  border-bottom: 1px solid #444;
+}
+
+#objectLibraryHeader strong {
+  color: white;
+  font-size: 14px;
+}
+
+#refreshLibrary {
+  background: #333;
+  border: 1px solid #555;
+  border-radius: 3px;
+  padding: 4px 8px;
+  color: white;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+#refreshLibrary:hover {
+  background: #555;
+}
+
+#objectLibraryContent {
+  padding: 8px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+#objectLibraryLoading {
+  color: #ccc;
+  font-size: 12px;
+  text-align: center;
+  padding: 20px;
+}
+
+#objectLibraryItems {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.objectLibraryItem {
+  background: #333;
+  border: 1px solid #555;
+  border-radius: 4px;
+  padding: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 120px;
+  text-align: center;
+}
+
+.objectLibraryItem:hover {
+  background: #444;
+  border-color: #99ccff;
+}
+
+.objectLibraryItem .objectName {
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.objectLibraryItem .objectType {
+  color: #ccc;
+  font-size: 10px;
+}
+
+.objectLibraryItem .objectPreview {
+  width: 60px;
+  height: 60px;
+  background: #222;
+  border: 1px solid #444;
+  border-radius: 3px;
+  margin: 4px auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  font-size: 10px;
+  position: relative;
+  overflow: hidden;
+}
+
+.objectLibraryItem .objectPreview canvas {
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 3px;
+}
+
+.objectLibraryItem .objectPreview .previewLoading {
+  color: #888;
+  font-size: 9px;
+  text-align: center;
+}
+
+.objectLibraryItem .objectPreview .previewError {
+  color: #ff6666;
+  font-size: 8px;
+  text-align: center;
+  line-height: 1.2;
+}
+
 
