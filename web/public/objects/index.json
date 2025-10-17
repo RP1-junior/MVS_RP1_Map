@@ -3,23 +3,14 @@
   "objects": [
     {
       "name": "test-room",
-      "filename": "test-room.glb",
-      "type": "GLB",
-      "url": "https://jrmvsserver.up.railway.app/objects/test-room.glb",
       "path": "/objects/test-room.glb"
     },
     {
       "name": "Fox",
-      "filename": "Fox.glb",
-      "type": "GLB",
-      "url": "https://jrmvsserver.up.railway.app/objects/Fox.glb",
       "path": "/objects/Fox.glb"
     },
     {
       "name": "Duck",
-      "filename": "Duck.glb",
-      "type": "GLB",
-      "url": "https://jrmvsserver.up.railway.app/objects/Duck.glb",
       "path": "/objects/Duck.glb"
     }
   ]

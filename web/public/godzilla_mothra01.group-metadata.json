@@ -1,0 +1,28 @@
+{
+   "name": "godzilla_mothra01",
+   "sources": [
+      "godzilla_mothra01.metadata.json"
+   ],
+   "instances": [
+      {
+         "name": "Scene",
+         "position": [
+            0,
+            0,
+            0
+         ],
+         "rotation": [
+            0,
+            0,
+            0,
+            1
+         ],
+         "scale": [
+            1,
+            1,
+            1
+         ],
+         "source": 0
+      }
+   ]
+}
