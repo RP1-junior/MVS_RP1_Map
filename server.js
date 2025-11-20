@@ -70,6 +70,87 @@ class MVSF_Map
       }
    }
 
+   #ParseSQLWithDelimiters (sSQLContent)
+   {
+      const aStatements = [];
+      let sCurrentDelimiter = ';';
+      const aLines = sSQLContent.split (/\r?\n/);
+      let sCurrentStatement = '';
+
+      for (let i = 0; i < aLines.length; i++)
+      {
+         const sLine = aLines[i];
+         const sTrimmedLine = sLine.trim ();
+
+         // Check for DELIMITER command (must be at start of line, case-insensitive)
+         const nDelimiterMatch = sTrimmedLine.match (/^DELIMITER\s+(.+)$/i);
+         
+         if (nDelimiterMatch)
+         {
+            // If we have accumulated a statement, save it before changing delimiter
+            if (sCurrentStatement.trim ().length > 0)
+            {
+               const sStatement = sCurrentStatement.trim ();
+               if (!sStatement.match (/^--/))
+               {
+                  aStatements.push (sStatement);
+               }
+               sCurrentStatement = '';
+            }
+
+            // Update delimiter (remove quotes if present)
+            sCurrentDelimiter = nDelimiterMatch[1].trim ().replace (/^['"]|['"]$/g, '');
+            // Skip the DELIMITER line itself
+            continue;
+         }
+
+         // Add line to current statement
+         if (sCurrentStatement.length > 0)
+         {
+            sCurrentStatement += '\n' + sLine;
+         }
+         else
+         {
+            sCurrentStatement = sLine;
+         }
+
+         // Check if current statement ends with the delimiter
+         // We need to check if the delimiter appears at the end (possibly with whitespace)
+         const nDelimiterIndex = sCurrentStatement.lastIndexOf (sCurrentDelimiter);
+         if (nDelimiterIndex !== -1)
+         {
+            // Check if delimiter is at the end (allowing for trailing whitespace)
+            const sAfterDelimiter = sCurrentStatement.substring (nDelimiterIndex + sCurrentDelimiter.length).trim ();
+            
+            // If there's only whitespace or newlines after the delimiter, it's the end of the statement
+            if (sAfterDelimiter.length === 0 || /^[\r\n\s]*$/.test (sAfterDelimiter))
+            {
+               // Extract the statement (without the delimiter)
+               const sStatement = sCurrentStatement.substring (0, nDelimiterIndex).trim ();
+               
+               if (sStatement.length > 0 && !sStatement.match (/^--/))
+               {
+                  aStatements.push (sStatement);
+               }
+               
+               sCurrentStatement = '';
+            }
+         }
+      }
+
+      // Add any remaining statement
+      if (sCurrentStatement.trim ().length > 0)
+      {
+         const sStatement = sCurrentStatement.trim ();
+         if (!sStatement.match (/^--/))
+         {
+            aStatements.push (sStatement);
+         }
+      }
+
+      return aStatements;
+   }
+
    async InitializeDatabase (pMVSQL)
    {
       const sDatabaseName = 'MVD_RP1_Map';
@@ -117,25 +198,47 @@ class MVSF_Map
                'CREATE DATABASE IF NOT EXISTS MVD_RP1_Map'
             );
 
-            // Execute the entire SQL file
-            try
+            // Parse SQL respecting DELIMITER statements
+            const aStatements = this.#ParseSQLWithDelimiters (sSQLContent);
+
+            console.log (`Parsed ${aStatements.length} SQL statements. Executing...`);
+
+            // Execute each statement
+            for (let i = 0; i < aStatements.length; i++)
             {
-               await pConnection.query (sSQLContent);
-               console.log (`Database '${sDatabaseName}' created and imported successfully.`);
-            }
-            catch (err)
-            {
-               // If database was created between check and execution, that's okay
-               if (err.code === 'ER_DB_CREATE_EXISTS' || err.message.includes ('already exists'))
+               const sStatement = aStatements[i];
+               
+               // Skip empty statements and comments
+               if (!sStatement || sStatement.trim ().length === 0 || sStatement.trim ().match (/^--/))
+                  continue;
+
+               try
                {
-                  console.log (`Database '${sDatabaseName}' was created by another process. Continuing...`);
+                  await pConnection.query (sStatement);
+                  
+                  // Log progress for large imports
+                  if ((i + 1) % 50 === 0)
+                  {
+                     console.log (`Executed ${i + 1}/${aStatements.length} statements...`);
+                  }
                }
-               else
+               catch (err)
                {
-                  console.error ('Error executing SQL file:', err.message);
-                  throw err;
+                  // Ignore errors for CREATE DATABASE if it already exists
+                  if (err.code === 'ER_DB_CREATE_EXISTS' || err.message.includes ('already exists'))
+                  {
+                     // This is okay, continue
+                  }
+                  else
+                  {
+                     console.error (`Error executing statement ${i + 1}/${aStatements.length}:`, err.message);
+                     console.error (`Statement preview:`, sStatement.substring (0, 200) + '...');
+                     throw err;
+                  }
                }
             }
+
+            console.log (`Database '${sDatabaseName}' created and imported successfully.`);
          }
          else
          {
