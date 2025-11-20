@@ -68,30 +68,6 @@ class MVSF_Map
       }
    }
 
-   SetupHealthCheck ()
-   {
-      // Try to access the underlying Express app
-      if (this.#pServer)
-      {
-         // Common property names for Express app in MVSF
-         const app = this.#pServer.app || this.#pServer.express || this.#pServer._app || 
-                     (this.#pServer.GetApp && this.#pServer.GetApp ());
-         
-         if (app && typeof app.get === 'function')
-         {
-            app.get ('/health', (req, res) =>
-            {
-               res.status (200).json ({ status: 'ok', timestamp: new Date ().toISOString () });
-            });
-            console.log ('Health check endpoint registered at /health');
-         }
-         else
-         {
-            console.log ('Warning: Could not access Express app for health check endpoint');
-         }
-      }
-   }
-
    onSQLReady (pMVSQL, err)
    {
       if (pMVSQL)
@@ -100,7 +76,6 @@ class MVSF_Map
 
          this.#pServer = new MVSF (Settings.MVSF, require ('./handler.json'), __dirname, null, 'application/json');
          this.#pServer.LoadHtmlSite (__dirname, [ './web/admin', './web/public']);
-         this.SetupHealthCheck ();
          this.#pServer.Run ();
 
          console.log ('SQL Server READY');
