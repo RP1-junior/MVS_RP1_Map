@@ -15,7 +15,8 @@
    "license": "ISC",
    "dependencies": {
       "@metaversalcorp/mvsf": "^0.3.0",
-      "@metaversalcorp/mvsql_mysql": "^0.1.0"
+      "@metaversalcorp/mvsql_mysql": "^0.1.0",
+      "mysql2": "^3.6.0"
    },
    "devDependencies": {
       "nodemon": "^2.0.22"
