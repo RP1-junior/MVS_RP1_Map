@@ -3,8 +3,8 @@ const { InitSQL      } = require ('./utils.js');
 const Settings      = require ('./settings.json');
 const fs            = require ('fs');
 const path          = require ('path');
-const zlib          = require ('zlib');
 const mysql         = require ('mysql2/promise');
+const zlib          = require ('zlib');
 
 const { MVSQL_MYSQL  } = require ('@metaversalcorp/mvsql_mysql');
 
@@ -24,26 +24,13 @@ class MVSF_Map
       switch (Settings.SQL.type)
       {
       case 'MYSQL':
-         // Ensure database exists before establishing connection
-         this.InitializeDatabase ().then (() => {
-            this.#pSQL = new MVSQL_MYSQL (Settings.SQL.config, this.onSQLReady.bind (this)); 
-         }).catch ((err) => {
-            console.log ('Error initializing database: ', err);
-            // Try to connect anyway - database might exist
-            this.#pSQL = new MVSQL_MYSQL (Settings.SQL.config, this.onSQLReady.bind (this)); 
-         });
+         this.#pSQL = new MVSQL_MYSQL (Settings.SQL.config, this.onSQLReady.bind (this)); 
          break;
 
       default:
          console.log ('No Database was configured for this service.');
          break;
       }
-   }
-
-   async InitializeDatabase ()
-   {
-      const sDatabaseName = Settings.SQL.config.database || 'MVD_RP1_Map';
-      await this.EnsureDatabaseExists (Settings.SQL.config, sDatabaseName);
    }
 
    #GetToken (sToken) 
@@ -83,138 +70,110 @@ class MVSF_Map
       }
    }
 
-   async EnsureDatabaseExists (pSQLConfig, sDatabaseName)
+   async InitializeDatabase (pMVSQL)
    {
+      const sDatabaseName = 'MVD_RP1_Map';
+      const sSQLFile = path.join (__dirname, 'MVD_RP1_Map.sql');
+      const sSQLGzFile = path.join (__dirname, 'MVD_RP1_Map.sql.gz');
+
       try
       {
-         // Create a connection without specifying the database
-         const tempConfig = {
-            host: pSQLConfig.host,
-            port: pSQLConfig.port,
-            user: pSQLConfig.user,
-            password: pSQLConfig.password,
-            multipleStatements: true
-         };
+         // Create a connection without specifying a database, with multipleStatements enabled
+         const pConfig = { ...Settings.SQL.config };
+         delete pConfig.database; // Remove database from config to connect without it
+         pConfig.multipleStatements = true; // Enable multiple statements
 
-         const connection = await mysql.createConnection (tempConfig);
+         const pConnection = await mysql.createConnection (pConfig);
 
-         try
+         // Check if database exists
+         const [aRows] = await pConnection.execute (
+            `SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?`,
+            [sDatabaseName]
+         );
+
+         if (aRows.length === 0)
          {
-            // Check if database exists
-            const [rows] = await connection.query (
-               `SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?`,
-               [sDatabaseName]
-            );
+            console.log (`Database '${sDatabaseName}' does not exist. Creating and importing...`);
 
-            if (rows.length === 0)
+            // Determine which SQL file to use
+            let sSQLContent = null;
+            if (fs.existsSync (sSQLFile))
             {
-               console.log (`Database '${sDatabaseName}' does not exist. Creating and importing...`);
-               
-               // Create the database
-               await connection.query (`CREATE DATABASE IF NOT EXISTS \`${sDatabaseName}\``);
-               console.log (`Database '${sDatabaseName}' created.`);
-
-               // Use the database
-               await connection.query (`USE \`${sDatabaseName}\``);
-
-               // Read and decompress the SQL file
-               const sqlFilePath = path.join (__dirname, 'MVD_RP1_Map.sql.gz');
-               
-               if (!fs.existsSync (sqlFilePath))
-               {
-                  console.log (`Warning: SQL file '${sqlFilePath}' not found. Database created but not imported.`);
-                  await connection.end ();
-                  return;
-               }
-
-               const compressedData = fs.readFileSync (sqlFilePath);
-               const sqlData = zlib.gunzipSync (compressedData).toString ('utf8');
-
-               console.log (`Importing SQL file into database '${sDatabaseName}'...`);
-
-               try
-               {
-                  // Try to execute the entire SQL file at once (MySQL supports multiple statements)
-                  await connection.query (sqlData);
-                  console.log (`Database '${sDatabaseName}' imported successfully.`);
-               }
-               catch (err)
-               {
-                  // If that fails, try splitting by semicolon and executing statement by statement
-                  console.log (`Bulk import failed, trying statement-by-statement import...`);
-                  
-                  // Remove MySQL-specific comments and split by semicolon
-                  let cleanedSQL = sqlData
-                     .replace (/\/\*[\s\S]*?\*\//g, '') // Remove /* ... */ comments
-                     .replace (/--.*$/gm, '') // Remove -- comments
-                     .replace (/^#.*$/gm, ''); // Remove # comments
-
-                  const statements = cleanedSQL
-                     .split (';')
-                     .map (stmt => stmt.trim ())
-                     .filter (stmt => stmt.length > 0);
-
-                  let successCount = 0;
-                  let errorCount = 0;
-
-                  for (const statement of statements)
-                  {
-                     try
-                     {
-                        await connection.query (statement);
-                        successCount++;
-                     }
-                     catch (stmtErr)
-                     {
-                        // Some statements might fail (like DROP IF EXISTS on non-existent objects)
-                        // Log but continue
-                        if (!stmtErr.message.includes ('Unknown table') && 
-                            !stmtErr.message.includes ('doesn\'t exist') &&
-                            !stmtErr.message.includes ('Unknown database') &&
-                            !stmtErr.message.includes ('already exists'))
-                        {
-                           console.log (`Warning: SQL statement failed: ${stmtErr.message.substring (0, 100)}`);
-                           errorCount++;
-                        }
-                        else
-                        {
-                           successCount++; // Count as success if it's an expected error
-                        }
-                     }
-                  }
-
-                  console.log (`Database '${sDatabaseName}' import completed. ${successCount} statements succeeded, ${errorCount} errors.`);
-               }
+               sSQLContent = fs.readFileSync (sSQLFile, 'utf8');
+            }
+            else if (fs.existsSync (sSQLGzFile))
+            {
+               const aBuffer = fs.readFileSync (sSQLGzFile);
+               sSQLContent = zlib.gunzipSync (aBuffer).toString ('utf8');
             }
             else
             {
-               console.log (`Database '${sDatabaseName}' already exists.`);
+               throw new Error (`Neither ${sSQLFile} nor ${sSQLGzFile} found`);
+            }
+
+            // Modify CREATE DATABASE to use IF NOT EXISTS to avoid errors
+            sSQLContent = sSQLContent.replace (
+               /CREATE DATABASE\s+MVD_RP1_Map/gi,
+               'CREATE DATABASE IF NOT EXISTS MVD_RP1_Map'
+            );
+
+            // Execute the entire SQL file
+            try
+            {
+               await pConnection.query (sSQLContent);
+               console.log (`Database '${sDatabaseName}' created and imported successfully.`);
+            }
+            catch (err)
+            {
+               // If database was created between check and execution, that's okay
+               if (err.code === 'ER_DB_CREATE_EXISTS' || err.message.includes ('already exists'))
+               {
+                  console.log (`Database '${sDatabaseName}' was created by another process. Continuing...`);
+               }
+               else
+               {
+                  console.error ('Error executing SQL file:', err.message);
+                  throw err;
+               }
             }
          }
-         finally
+         else
          {
-            await connection.end ();
+            console.log (`Database '${sDatabaseName}' already exists. Skipping initialization.`);
          }
+
+         await pConnection.end ();
       }
       catch (err)
       {
-         console.log (`Error ensuring database exists: ${err.message}`);
+         console.error ('Error initializing database:', err);
          throw err;
       }
    }
 
-   onSQLReady (pMVSQL, err)
+   async onSQLReady (pMVSQL, err)
    {
       if (pMVSQL)
       {
-         this.ReadFromEnv (Settings.MVSF, [ "nPort" ]);
+         try
+         {
+            // Initialize database if it doesn't exist
+            await this.InitializeDatabase (pMVSQL);
 
-         this.#pServer = new MVSF (Settings.MVSF, require ('./handler.json'), __dirname, null, 'application/json');
-         this.#pServer.LoadHtmlSite (__dirname, [ './web/admin', './web/public']);
-         this.#pServer.Run ();
+            this.ReadFromEnv (Settings.MVSF, [ "nPort" ]);
 
-         console.log ('SQL Server READY');
-         InitSQL (pMVSQL, this.#pServer, Settings.Info);
+            this.#pServer = new MVSF (Settings.MVSF, require ('./handler.json'), __dirname, null, 'application/json');
+            this.#pServer.LoadHtmlSite (__dirname, [ './web/admin', './web/public']);
+            this.#pServer.Run ();
+
+            console.log ('SQL Server READY');
+            InitSQL (pMVSQL, this.#pServer, Settings.Info);
+         }
+         catch (initErr)
+         {
+            console.error ('Error during database initialization:', initErr);
+            console.log ('SQL Server Connect Error: ', initErr);
+         }
       }
       else
       {
