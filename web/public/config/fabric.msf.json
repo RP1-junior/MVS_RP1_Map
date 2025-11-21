@@ -1,6 +1,6 @@
 {
    "map": {
-      "namespace": "metaversal/rp1_map_cache",
+      "namespace": "Junior/map",
       "service": "MVIO",
       "require":   "MVRP_Map",
       "connect": "secure=true;server=<RAILWAY_PUBLIC_DOMAIN>:443;session=RP1",
