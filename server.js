@@ -157,100 +157,123 @@ class MVSF_Map
       const sSQLFile = path.join (__dirname, 'MVD_RP1_Map.sql');
       const sSQLGzFile = path.join (__dirname, 'MVD_RP1_Map.sql.gz');
 
+      // Create a connection pool for initialization (reused connections reduce memory)
+      let pPool = null;
+
       try
       {
-         // Create a connection without specifying a database, with multipleStatements enabled
+         // Create a connection pool without specifying a database, with multipleStatements enabled
          const pConfig = { ...Settings.SQL.config };
          delete pConfig.database; // Remove database from config to connect without it
          pConfig.multipleStatements = true; // Enable multiple statements
+         // Use a smaller pool for initialization (only need 1 connection for this task)
+         pConfig.connectionLimit = 1;
+         pConfig.queueLimit = 0; // Unlimited queue for initialization
 
-         const pConnection = await mysql.createConnection (pConfig);
+         pPool = mysql.createPool (pConfig);
 
-         // Check if database exists
-         const [aRows] = await pConnection.execute (
-            `SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?`,
-            [sDatabaseName]
-         );
+         // Get a connection from the pool
+         const pConnection = await pPool.getConnection ();
 
-         if (aRows.length === 0)
+         try
          {
-            console.log (`Database '${sDatabaseName}' does not exist. Creating and importing...`);
+            // Check if database exists
+            const [aRows] = await pConnection.execute (
+               `SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?`,
+               [sDatabaseName]
+            );
 
-            // Determine which SQL file to use
-            let sSQLContent = null;
-            if (fs.existsSync (sSQLFile))
+            if (aRows.length === 0)
             {
-               sSQLContent = fs.readFileSync (sSQLFile, 'utf8');
-            }
-            else if (fs.existsSync (sSQLGzFile))
-            {
-               const aBuffer = fs.readFileSync (sSQLGzFile);
-               sSQLContent = zlib.gunzipSync (aBuffer).toString ('utf8');
+               console.log (`Database '${sDatabaseName}' does not exist. Creating and importing...`);
+
+               // Determine which SQL file to use
+               let sSQLContent = null;
+               if (fs.existsSync (sSQLFile))
+               {
+                  sSQLContent = fs.readFileSync (sSQLFile, 'utf8');
+               }
+               else if (fs.existsSync (sSQLGzFile))
+               {
+                  const aBuffer = fs.readFileSync (sSQLGzFile);
+                  sSQLContent = zlib.gunzipSync (aBuffer).toString ('utf8');
+               }
+               else
+               {
+                  throw new Error (`Neither ${sSQLFile} nor ${sSQLGzFile} found`);
+               }
+
+               // Modify CREATE DATABASE to use IF NOT EXISTS to avoid errors
+               sSQLContent = sSQLContent.replace (
+                  /CREATE DATABASE\s+MVD_RP1_Map/gi,
+                  'CREATE DATABASE IF NOT EXISTS MVD_RP1_Map'
+               );
+
+               // Parse SQL respecting DELIMITER statements
+               const aStatements = this.#ParseSQLWithDelimiters (sSQLContent);
+
+               console.log (`Parsed ${aStatements.length} SQL statements. Executing...`);
+
+               // Execute each statement
+               for (let i = 0; i < aStatements.length; i++)
+               {
+                  const sStatement = aStatements[i];
+                  
+                  // Skip empty statements and comments
+                  if (!sStatement || sStatement.trim ().length === 0 || sStatement.trim ().match (/^--/))
+                     continue;
+
+                  try
+                  {
+                     await pConnection.query (sStatement);
+                     
+                     // Log progress for large imports
+                     if ((i + 1) % 50 === 0)
+                     {
+                        console.log (`Executed ${i + 1}/${aStatements.length} statements...`);
+                     }
+                  }
+                  catch (err)
+                  {
+                     // Ignore errors for CREATE DATABASE if it already exists
+                     if (err.code === 'ER_DB_CREATE_EXISTS' || err.message.includes ('already exists'))
+                     {
+                        // This is okay, continue
+                     }
+                     else
+                     {
+                        console.error (`Error executing statement ${i + 1}/${aStatements.length}:`, err.message);
+                        console.error (`Statement preview:`, sStatement.substring (0, 200) + '...');
+                        throw err;
+                     }
+                  }
+               }
+
+               console.log (`Database '${sDatabaseName}' created and imported successfully.`);
             }
             else
             {
-               throw new Error (`Neither ${sSQLFile} nor ${sSQLGzFile} found`);
+               console.log (`Database '${sDatabaseName}' already exists. Skipping initialization.`);
             }
-
-            // Modify CREATE DATABASE to use IF NOT EXISTS to avoid errors
-            sSQLContent = sSQLContent.replace (
-               /CREATE DATABASE\s+MVD_RP1_Map/gi,
-               'CREATE DATABASE IF NOT EXISTS MVD_RP1_Map'
-            );
-
-            // Parse SQL respecting DELIMITER statements
-            const aStatements = this.#ParseSQLWithDelimiters (sSQLContent);
-
-            console.log (`Parsed ${aStatements.length} SQL statements. Executing...`);
-
-            // Execute each statement
-            for (let i = 0; i < aStatements.length; i++)
-            {
-               const sStatement = aStatements[i];
-               
-               // Skip empty statements and comments
-               if (!sStatement || sStatement.trim ().length === 0 || sStatement.trim ().match (/^--/))
-                  continue;
-
-               try
-               {
-                  await pConnection.query (sStatement);
-                  
-                  // Log progress for large imports
-                  if ((i + 1) % 50 === 0)
-                  {
-                     console.log (`Executed ${i + 1}/${aStatements.length} statements...`);
-                  }
-               }
-               catch (err)
-               {
-                  // Ignore errors for CREATE DATABASE if it already exists
-                  if (err.code === 'ER_DB_CREATE_EXISTS' || err.message.includes ('already exists'))
-                  {
-                     // This is okay, continue
-                  }
-                  else
-                  {
-                     console.error (`Error executing statement ${i + 1}/${aStatements.length}:`, err.message);
-                     console.error (`Statement preview:`, sStatement.substring (0, 200) + '...');
-                     throw err;
-                  }
-               }
-            }
-
-            console.log (`Database '${sDatabaseName}' created and imported successfully.`);
          }
-         else
+         finally
          {
-            console.log (`Database '${sDatabaseName}' already exists. Skipping initialization.`);
+            // Release the connection back to the pool
+            pConnection.release ();
          }
-
-         await pConnection.end ();
       }
       catch (err)
       {
          console.error ('Error initializing database:', err);
          throw err;
+      }
+      finally
+      {
+         // Properly close the pool to free memory
+         if (pPool)
+         {
+            await pPool.end ();
+         }
       }
    }
 

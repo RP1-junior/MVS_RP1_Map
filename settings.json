@@ -19,12 +19,20 @@
       "type": "MYSQL",
       "config": {
          "connectionLimit":  10,
+         "queueLimit":       0,
          "host":             "<MYSQLHOST>",
          "port":             "<MYSQLPORT>",
          "user":             "<MYSQLUSER>",
          "password":         "<MYSQLPASSWORD>",
          "database":         "<MYSQLDATABASE>",
-         "multipleStatements": true
+         "multipleStatements": true,
+         "connectTimeout":   10000,
+         "acquireTimeout":   60000,
+         "timeout":          60000,
+         "idleTimeout":     300000,
+         "maxIdle":          10,
+         "enableKeepAlive":  true,
+         "keepAliveInitialDelay": 0
       }
    },
 
