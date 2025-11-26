@@ -1323,22 +1323,7 @@ CREATE FUNCTION IPstob
 RETURNS BINARY(4)
 DETERMINISTIC
 BEGIN
-      DECLARE a       INT;
-      DECLARE b       INT;
-      DECLARE c       INT;
-      DECLARE x       BIGINT;
-
-          SET a = LOCATE ('.', sIPAddress);
-          SET b = LOCATE ('.', sIPAddress, a + 1);
-          SET c = LOCATE ('.', sIPAddress, b + 1);
-
-          SET x = 0;
-          SET x = x * 256 + CAST(SUBSTRING(sIPAddress, 1,          a - 1) AS UNSIGNED);
-          SET x = x * 256 + CAST(SUBSTRING(sIPAddress, a + 1,  b - a - 1) AS UNSIGNED);
-          SET x = x * 256 + CAST(SUBSTRING(sIPAddress, b + 1,  c - b - 1) AS UNSIGNED);
-          SET x = x * 256 + CAST(SUBSTRING(sIPAddress, c + 1, 16 - c - 1) AS UNSIGNED);
-
-       RETURN CAST(x AS BINARY(4));
+       RETURN UNHEX (HEX (INET_ATON (sIPAddress)));
 END$$
   
 DELIMITER ;

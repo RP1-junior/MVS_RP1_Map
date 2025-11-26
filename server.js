@@ -239,6 +239,9 @@ class MVSF_Map
             }
 
             console.log (`Database '${sDatabaseName}' created and imported successfully.`);
+            
+            // Insert initial rows after database creation
+            await this.InsertInitialRows (pConnection, sDatabaseName);
          }
          else
          {
@@ -251,6 +254,64 @@ class MVSF_Map
       {
          console.error ('Error initializing database:', err);
          throw err;
+      }
+   }
+
+   async InsertInitialRows (pConnection, sDatabaseName)
+   {
+      try
+      {
+         // Select the database
+         await pConnection.query (`USE ${sDatabaseName}`);
+
+         // Get Railway public domain
+         const sRailwayDomain = process.env.RAILWAY_PUBLIC_DOMAIN || '';
+         const sSceneUrl = sRailwayDomain ? `https://${sRailwayDomain}/scenes/scene.glb` : 'https://MYAPPURL.COM/scenes/scene.glb';
+
+         // Check if RMRoot row already exists (by Name_wsRMRootId)
+         const [aRMRootRows] = await pConnection.execute (
+            `SELECT ObjectHead_Self_twObjectIx FROM RMRoot WHERE Name_wsRMRootId = ?`,
+            ['Root']
+         );
+
+         if (aRMRootRows.length === 0)
+         {
+            // Insert RMRoot row
+            await pConnection.execute (
+               `INSERT INTO RMRoot (ObjectHead_Parent_wClass, ObjectHead_Parent_twObjectIx, ObjectHead_Self_wClass, ObjectHead_Self_twObjectIx, ObjectHead_twEventIz, ObjectHead_wFlags, Name_wsRMRootId, Owner_twRPersonaIx) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+               [52, 1, 70, null, 2, 32, 'Root', 1]
+            );
+            console.log ('Inserted initial RMRoot row.');
+         }
+         else
+         {
+            console.log ('RMRoot row already exists. Skipping insert.');
+         }
+
+         // Check if RMPObject row already exists (by Resource_sReference containing scene.glb)
+         const [aRMPObjectRows] = await pConnection.execute (
+            `SELECT ObjectHead_Self_twObjectIx FROM RMPObject WHERE Resource_sReference LIKE ?`,
+            ['%/scenes/scene.glb']
+         );
+
+         if (aRMPObjectRows.length === 0)
+         {
+            // Insert RMPObject row
+            await pConnection.execute (
+               `INSERT INTO RMPObject (ObjectHead_Parent_wClass, ObjectHead_Parent_twObjectIx, ObjectHead_Self_wClass, ObjectHead_Self_twObjectIx, ObjectHead_twEventIz, ObjectHead_wFlags, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+               [70, 1, 73, null, 1, 32, 1, 0, 1, 0, 25, 0, '', sSceneUrl, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 500, 500, 250]
+            );
+            console.log ('Inserted initial RMPObject row.');
+         }
+         else
+         {
+            console.log ('RMPObject row already exists. Skipping insert.');
+         }
+      }
+      catch (err)
+      {
+         console.error ('Error inserting initial rows:', err);
+         // Don't throw - allow the server to continue even if initial rows fail
       }
    }
 
