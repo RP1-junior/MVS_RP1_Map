@@ -58,9 +58,10 @@ class MVSF_Map
       {
          let sContent = fs.readFileSync (sFabricPath, 'utf8');
          
-         // Replace all occurrences of <RAILWAY_PUBLIC_DOMAIN> with the actual environment variable
-         const sRailwayDomain = process.env.RAILWAY_PUBLIC_DOMAIN || '';
-         sContent = sContent.replace (/<RAILWAY_PUBLIC_DOMAIN>/g, sRailwayDomain);
+         // Replace all occurrences of <PUBLIC_DOMAIN> with the actual environment variable
+         // Check for PUBLIC_DOMAIN first, fallback to RAILWAY_PUBLIC_DOMAIN for Railway compatibility
+         const sPublicDomain = process.env.PUBLIC_DOMAIN || process.env.RAILWAY_PUBLIC_DOMAIN || '';
+         sContent = sContent.replace (/<PUBLIC_DOMAIN>/g, sPublicDomain);
          
          fs.writeFileSync (sFabricPath, sContent, 'utf8');
       }
@@ -240,12 +241,13 @@ class MVSF_Map
 
             console.log (`Database '${sDatabaseName}' created and imported successfully.`);
 
-            // Add initial RMPObject row with Railway public URL (only when database is first created)
+            // Add initial RMPObject row with public URL (only when database is first created)
             // Ensure we're using the correct database
             await pConnection.query (`USE ${sDatabaseName}`);
             
-            const sRailwayDomain = process.env.RAILWAY_PUBLIC_DOMAIN || '';
-            const sSceneUrl = sRailwayDomain ? `https://${sRailwayDomain}/scenes/scene.glb` : 'https://MYAPPURL.COM/scenes/scene.glb';
+            // Check for PUBLIC_DOMAIN first, fallback to RAILWAY_PUBLIC_DOMAIN for Railway compatibility
+            const sPublicDomain = process.env.PUBLIC_DOMAIN || process.env.RAILWAY_PUBLIC_DOMAIN || '';
+            const sSceneUrl = sPublicDomain ? `https://${sPublicDomain}/scenes/scene.glb` : 'https://MYAPPURL.COM/scenes/scene.glb';
             
             try
             {
