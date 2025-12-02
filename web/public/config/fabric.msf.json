@@ -1,6 +1,6 @@
 {
    "map": {
-      "namespace": "junior/map",
+      "namespace": "mycompanyname/map",
       "service": "MVIO",
       "require":   "MVRP_Map",
       "connect": "secure=true;server=<PUBLIC_DOMAIN>:443;session=RP1",
