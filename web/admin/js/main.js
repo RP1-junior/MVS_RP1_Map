@@ -166,7 +166,7 @@ async function loadModelFromReference(sReference, boundingBox=null, scale=null, 
 
     // Create new loading promise
     const loadingPromise = new Promise( (resolve, reject) => {
-        if (isUrl(sReference)) {
+//        if (1isUrl(sReference)) {
             // Load from URL
             loader.load(sReference, (gltf) => {
                 const model = gltf.scene;
@@ -209,6 +209,7 @@ async function loadModelFromReference(sReference, boundingBox=null, scale=null, 
                 resolve(placeholder);
             }
             );
+/*
         } else {
             // For non-URL references, create a red placeholder
             // Use bounding box dimensions if available, otherwise default to 1x1x1
@@ -242,6 +243,7 @@ async function loadModelFromReference(sReference, boundingBox=null, scale=null, 
             loadingPromises.delete(cacheKey);
             resolve(placeholder);
         }
+*/
     }
     );
 
@@ -3292,17 +3294,17 @@ function undo() {
 // ===== Render loop =====
 function animate() {
     requestAnimationFrame(animate);
-    
+
     // Smooth camera panning with spacebar + arrow keys
     if (isSpacePressed) {
         const panVector = new THREE.Vector3();
-        
+
         // Calculate right vector based on camera orientation
         const forward = new THREE.Vector3();
         camera.getWorldDirection(forward);
         const right = new THREE.Vector3();
         right.crossVectors(forward, camera.up).normalize();
-        
+
         // Horizontal panning (left/right)
         if (panDirection.left) {
             panVector.add(right.clone().multiplyScalar(-PAN_SPEED));
@@ -3310,7 +3312,7 @@ function animate() {
         if (panDirection.right) {
             panVector.add(right.clone().multiplyScalar(PAN_SPEED));
         }
-        
+
         // Vertical panning (up/down)
         if (panDirection.up) {
             panVector.add(camera.up.clone().multiplyScalar(PAN_SPEED));
@@ -3318,14 +3320,14 @@ function animate() {
         if (panDirection.down) {
             panVector.add(camera.up.clone().multiplyScalar(-PAN_SPEED));
         }
-        
+
         // Apply panning to both camera position and orbit target
         if (panVector.length() > 0) {
             camera.position.add(panVector);
             orbit.target.add(panVector);
         }
     }
-    
+
     orbit.update();
     renderer.render(scene, camera);
 }
@@ -3547,7 +3549,7 @@ function deselectAllSidebar() {
 }
 
 // ===== Export JSON (quaternions) =====
-function buildNode (obj) 
+function buildNode (obj)
 {
    if (!obj.userData?.isSelectable)
       return null;
@@ -3566,13 +3568,13 @@ function buildNode (obj)
    const sourceRef = obj.userData?.sourceRef;
 
    // Special handling for Object Root - different JSON structure
-   if (obj.userData?.isCanvasRoot) 
+   if (obj.userData?.isCanvasRoot)
    {
       // For Object Root, use the label text from models panel (what's displayed)
       // The label is a span that's not the caret (caret has class "caret")
       const listItemLabel = obj.userData.listItem?.querySelector('span:not(.caret)');
       const displayName = listItemLabel?.textContent?.trim() || obj.name || baseName || "Object Root";
-      
+
       const node = {
          twObjectIx: obj.userData?.twObjectIx ?? 1,
          sName: displayName,
@@ -3585,7 +3587,7 @@ function buildNode (obj)
          aChildren: []
       };
 
-      if (obj instanceof THREE.Group) 
+      if (obj instanceof THREE.Group)
       {
          // For Object Root, export all children normally
          obj.children.forEach
@@ -3616,7 +3618,7 @@ function buildNode (obj)
         aChildren: []
    };
 
-   if (obj instanceof THREE.Group) 
+   if (obj instanceof THREE.Group)
    {
       // For editor groups, skip the first child (parent object) and only export other children
       const childrenToExport = obj.userData?.isEditorGroup === true ? obj.children.slice(1) : obj.children;
@@ -3736,7 +3738,7 @@ async function parseJSONAndUpdateScene(jsonText) {
             } else {
                 canvasRoot.userData.twObjectIx = 1;
             }
-            
+
             // Update name from JSON
             if (rootNode.sName) {
                 canvasRoot.name = rootNode.sName;
@@ -4279,7 +4281,7 @@ function updateObjectFromNode(obj, node, existingObjects) {
 
     // Get sName from root level (new format) or from pResource (old format for backward compatibility)
     const nodeSName = node.sName || (node.pResource?.sName);
-    
+
     // Update name if it changed
     if (nodeSName && obj.name !== nodeSName) {
         obj.name = nodeSName;
@@ -4479,4 +4481,3 @@ if (jsonEditor) {
     // Initial JSON update
 //    updateJSONEditorFromScene();
 }
-
