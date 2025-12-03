@@ -2893,8 +2893,8 @@ renderer.domElement.addEventListener("click", e => {
                 current = current.parent;
             }
 
+            // Only select the object, don't refocus camera (camera focusing is only on double-click)
             selectFromCanvas(topmostSelectable, e.shiftKey);
-            frameCameraOn(topmostSelectable);
         }
     }
 }
