@@ -2703,7 +2703,9 @@ CREATE PROCEDURE call_RMPObject_Validate_Type
    INOUT nError                        INT
 )
 BEGIN
+       DECLARE SBO_CLASS_RMTOBJECT                        INT DEFAULT 72;
        DECLARE SBO_CLASS_RMPOBJECT                        INT DEFAULT 73;
+       DECLARE MVO_RMTOBJECT_TYPE_PARCEL                  INT DEFAULT 11;
 
        DECLARE Parent_bType    TINYINT UNSIGNED;
        DECLARE Parent_bSubtype TINYINT UNSIGNED;
@@ -2712,7 +2714,7 @@ BEGIN
 
             IF ObjectHead_Parent_wClass = SBO_CLASS_RMPOBJECT
           THEN
-                 SELECT Type_bType, Type_bSubtype
+                 SELECT Type_bType,   Type_bSubtype
                    INTO Parent_bType, Parent_bSubtype
                    FROM RMPObject AS o
                   WHERE ObjectHead_Self_twObjectIx = ObjectHead_Parent_twObjectIx;
@@ -2756,10 +2758,13 @@ BEGIN
                    CALL call_Error (21, 'Type_bMovable is invalid', nError);
         END IF ;
 
-            IF ObjectHead_Parent_wClass = SBO_CLASS_RMPOBJECT AND Type_bType < Parent_bType
+            IF ObjectHead_Parent_wClass = SBO_CLASS_RMTOBJECT  AND  Parent_bType <> MVO_RMTOBJECT_TYPE_PARCEL
+          THEN
+                   CALL call_Error (21, 'Parent\'s Type_bType must be equal to PARCEL when its parent\'s class is RMTOBJECT', nError);
+        ELSEIF ObjectHead_Parent_wClass = SBO_CLASS_RMPOBJECT  AND  Type_bType < Parent_bType
           THEN
                    CALL call_Error (21, 'Type_bType must be greater than or equal to its parent\'s Type_bType', nError);
-        ELSEIF ObjectHead_Parent_wClass = SBO_CLASS_RMPOBJECT AND Type_bType = Parent_bType AND Type_bSubtype <= Parent_bSubtype
+        ELSEIF ObjectHead_Parent_wClass = SBO_CLASS_RMPOBJECT  AND  Type_bType = Parent_bType  AND  Type_bSubtype <= Parent_bSubtype
           THEN
                    CALL call_Error (21, 'Type_bSubtype must be greater than its parent\'s Type_bType', nError);
         END IF ;
@@ -6263,7 +6268,9 @@ CREATE PROCEDURE call_RMTObject_Validate_Type
    INOUT nError                        INT
 )
 BEGIN
+       DECLARE SBO_CLASS_RMCOBJECT                        INT DEFAULT 71;
        DECLARE SBO_CLASS_RMTOBJECT                        INT DEFAULT 72;
+       DECLARE MVO_RMCOBJECT_TYPE_SURFACE                 INT DEFAULT 17;
 
        DECLARE Parent_bType    TINYINT UNSIGNED;
        DECLARE Parent_bSubtype TINYINT UNSIGNED;
@@ -6272,7 +6279,7 @@ BEGIN
 
             IF ObjectHead_Parent_wClass = SBO_CLASS_RMTOBJECT
           THEN
-                 SELECT Type_bType, Type_bSubtype
+                 SELECT Type_bType,   Type_bSubtype
                    INTO Parent_bType, Parent_bSubtype
                    FROM RMTObject AS o
                   WHERE ObjectHead_Self_twObjectIx = ObjectHead_Parent_twObjectIx;
@@ -6308,7 +6315,10 @@ BEGIN
                    CALL call_Error (21, 'Type_bFiction is invalid', nError);
         END IF ;
 
-            IF ObjectHead_Parent_wClass = SBO_CLASS_RMTOBJECT AND Type_bType < Parent_bType
+            IF ObjectHead_Parent_wClass = SBO_CLASS_RMCOBJECT  AND  Parent_bType <> MVO_RMCOBJECT_TYPE_SURFACE
+          THEN
+                   CALL call_Error (21, 'Parent\'s Type_bType must be equal to SURFACE when its parent\'s class is RMCOBJECT', nError);
+        ELSEIF ObjectHead_Parent_wClass = SBO_CLASS_RMTOBJECT AND Type_bType < Parent_bType
           THEN
                    CALL call_Error (21, 'Type_bType must be greater than or equal to its parent\'s Type_bType', nError);
         ELSEIF ObjectHead_Parent_wClass = SBO_CLASS_RMTOBJECT AND Type_bType = Parent_bType AND Type_bSubtype <= Parent_bSubtype
@@ -13630,3 +13640,74 @@ END$$
 DELIMITER ;
 
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+/*******************************************************************************************************************************
+**                                                                                                                            **
+**                                             MVD_RP1_Map : init_DefaultScene.sql                                            **
+**                                                                                                                            **
+********************************************************************************************************************************
+**                            Copyright (c) 2023-2025 Metaversal Corporation. All rights reserved.                            **
+*******************************************************************************************************************************/
+
+CALL set_RMRoot_RMPObject_Open
+(
+   '0.0.0.0',                 -- sIPAddress           
+   1,                         -- twRPersonaIx         
+   1,                         -- twRMRootIx           
+   'My First Scene',          -- Name_wsRMPObjectId   
+   1,                         -- Type_bType           
+   0,                         -- Type_bSubtype        
+   1,                         -- Type_bFiction        
+   0,                         -- Type_bMovable        
+   1,                         -- Owner_twRPersonaIx   
+   0,                         -- Resource_qwResource  
+   '',                        -- Resource_sName       
+   '',                        -- Resource_sReference  
+   0,                         -- Transform_Position_dX
+   0,                         -- Transform_Position_dY
+   0,                         -- Transform_Position_dZ
+   0,                         -- Transform_Rotation_dX
+   0,                         -- Transform_Rotation_dY
+   0,                         -- Transform_Rotation_dZ
+   1,                         -- Transform_Rotation_dW
+   1,                         -- Transform_Scale_dX   
+   1,                         -- Transform_Scale_dY   
+   1,                         -- Transform_Scale_dZ   
+   150,                       -- Bound_dX             
+   150,                       -- Bound_dY             
+   150                        -- Bound_dZ             
+);
+-- twRMPObjectIx = 1
+
+
+CALL set_RMPObject_RMPObject_Open
+(
+   '0.0.0.0',                 -- sIPAddress           
+   1,                         -- twRPersonaIx         
+   1,                         -- twRMPObjectIx        
+   'Hello World!',            -- Name_wsRMPObjectId   
+   1,                         -- Type_bType           
+   0,                         -- Type_bSubtype        
+   1,                         -- Type_bFiction        
+   0,                         -- Type_bMovable        
+   1,                         -- Owner_twRPersonaIx   
+   0,                         -- Resource_qwResource  
+   '',                        -- Resource_sName       
+   '/scenes/hello_world.glb', -- Resource_sReference  
+   0,                         -- Transform_Position_dX
+   0,                         -- Transform_Position_dY
+   0,                         -- Transform_Position_dZ
+   0,                         -- Transform_Rotation_dX
+   0,                         -- Transform_Rotation_dY
+   0,                         -- Transform_Rotation_dZ
+   1,                         -- Transform_Rotation_dW
+   1,                         -- Transform_Scale_dX   
+   1,                         -- Transform_Scale_dY   
+   1,                         -- Transform_Scale_dZ   
+   134.65382385253906,        -- Bound_dX             
+   13.596150933846705,        -- Bound_dY             
+   129.60743890149325         -- Bound_dZ             
+);
+-- twRMPObjectIx = 2
+
+
+/******************************************************************************************************************************/

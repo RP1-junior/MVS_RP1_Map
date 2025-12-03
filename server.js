@@ -193,12 +193,6 @@ class MVSF_Map
                throw new Error (`Neither ${sSQLFile} nor ${sSQLGzFile} found`);
             }
 
-            // Modify CREATE DATABASE to use IF NOT EXISTS to avoid errors
-            sSQLContent = sSQLContent.replace (
-               /CREATE DATABASE\s+MVD_RP1_Map/gi,
-               'CREATE DATABASE IF NOT EXISTS MVD_RP1_Map'
-            );
-
             // Parse SQL respecting DELIMITER statements
             const aStatements = this.#ParseSQLWithDelimiters (sSQLContent);
 
@@ -240,41 +234,6 @@ class MVSF_Map
             }
 
             console.log (`Database '${sDatabaseName}' created and imported successfully.`);
-
-            // Add initial RMPObject row with public URL (only when database is first created)
-            // Ensure we're using the correct database
-            await pConnection.query (`USE ${sDatabaseName}`);
-
-            // Check for PUBLIC_DOMAIN first, fallback to RAILWAY_PUBLIC_DOMAIN for Railway compatibility
-            const sPublicDomain = process.env.PUBLIC_DOMAIN || process.env.RAILWAY_PUBLIC_DOMAIN || '';
-            const sSceneUrl = sPublicDomain ? `https://${sPublicDomain}/scenes/scene.glb` : 'https://MYAPPURL.COM/scenes/scene.glb';
-
-            try
-            {
-               await pConnection.query (
-                  `INSERT INTO RMPObject (ObjectHead_Parent_wClass, ObjectHead_Parent_twObjectIx, ObjectHead_Self_wClass, ObjectHead_Self_twObjectIx, ObjectHead_twEventIz, ObjectHead_wFlags, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                  [70, 1, 73, null, 1, 32, 1, 0, 1, 0, 25, 0, '', '', 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 200, 200, 200]
-               );
-
-               await pConnection.query (
-                  `INSERT INTO RMPObject (ObjectHead_Parent_wClass, ObjectHead_Parent_twObjectIx, ObjectHead_Self_wClass, ObjectHead_Self_twObjectIx, ObjectHead_twEventIz, ObjectHead_wFlags, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                  [73, 1, 73, null, 1, 32, 1, 0, 1, 0, 25, 0, '', sSceneUrl, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 134.65382385253906, 13.596150933846705, 129.60743890149325]
-               );
-               console.log ('Initial RMPObject row inserted successfully.');
-            }
-            catch (insertErr)
-            {
-               // Check if row already exists (duplicate key or other constraint)
-               if (insertErr.code === 'ER_DUP_ENTRY' || insertErr.message.includes ('Duplicate entry'))
-               {
-                  console.log ('Initial RMPObject row already exists. Skipping insert.');
-               }
-               else
-               {
-                  console.error ('Error inserting initial RMPObject row:', insertErr);
-                  // Don't throw - allow the database initialization to complete
-               }
-            }
          }
          else
          {
