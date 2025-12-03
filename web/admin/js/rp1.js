@@ -221,9 +221,9 @@ class ExtractMap extends MV.MVMF.NOTIFICATION
 
             for (let i=0; i < aPObject.length; i++)
             {
-               if (this.#m_MapRMXItem['73' + '-' + twObjectIx] == undefined)
+               if (this.#m_MapRMXItem['73' + '-' + aPObject[i].twObjectIx] == undefined)
                {
-                  this.#m_MapRMXItem['73' + '-' + twObjectIx] = aPObject[i];
+                  this.#m_MapRMXItem['73' + '-' + aPObject[i].twObjectIx] = aPObject[i];
                   aPObject[i].Attach (this);
                }
                else
@@ -303,29 +303,7 @@ class ExtractMap extends MV.MVMF.NOTIFICATION
    {
    }
 
-   #SortItems (jContainer, jRow, sName)
+   Publish (JSONData)
    {
-      jRow.detach ();
-
-      let jRows = jContainer.children ();
-      let xCollator = this.xCollator;
-      let a = 0;
-      let b = jRows.length;
-
-      while (a < b)
-      {
-         let c = Math.floor ((a + b) / 2);
-         let x = xCollator.compare (sName, jRows.eq (c).find ('.tree-label').text ());
-
-         if (x < 0)
-            b = c;
-         else if (x > 0)
-            a = c + 1;
-         else a = b = c;
-      }
-
-      if (a == jRows.length)
-         jContainer.append (jRow);
-      else jRows.eq (a).before (jRow);
    }
 };
