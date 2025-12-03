@@ -242,6 +242,7 @@ CREATE TABLE RMPObject
    ObjectHead_twEventIz                BIGINT            NOT NULL,
    ObjectHead_wFlags                   SMALLINT          NOT NULL,
 
+   Name_wsRMPObjectId                  VARCHAR (48)      NOT NULL,
    Type_bType                          TINYINT UNSIGNED  NOT NULL,
    Type_bSubtype                       TINYINT UNSIGNED  NOT NULL,
    Type_bFiction                       TINYINT UNSIGNED  NOT NULL,
@@ -978,6 +979,29 @@ DELIMITER ;
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ~~                                                                                                                            ~~
+~~                                               MVD_RP1_Map : Format_Name_P.sql                                              ~~
+~~                                                                                                                            ~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~                            Copyright (c) 2023-2023 Metaversal Corporation. All rights reserved.                            ~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+
+DELIMITER $$
+
+CREATE FUNCTION Format_Name_P
+(
+   wsRMPObjectId            VARCHAR (48)
+)
+RETURNS VARCHAR (256)
+DETERMINISTIC
+BEGIN
+      RETURN CONCAT ('{ "wsRMPObjectId": "', wsRMPObjectId, '" }');
+END$$
+  
+DELIMITER ;
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~                                                                                                                            ~~
 ~~                                               MVD_RP1_Map : Format_Name_R.sql                                              ~~
 ~~                                                                                                                            ~~
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1684,7 +1708,7 @@ BEGIN
                                  CONCAT
                                  (
                                    '{ ',
-                                     '"Bound": ',         Format_Bound
+                                     '"pBound": ',        Format_Bound
                                                           (
                                                              Bound_dX,
                                                              Bound_dY,
@@ -1698,6 +1722,72 @@ BEGIN
                                  '{ }';
 
                                SET bError = IF (ROW_COUNT () = 1, 0, 1);
+                 END IF ;
+        END IF ;
+END$$
+  
+DELIMITER ;
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~                                                                                                                            ~~
+~~                                         MVD_RP1_Map : call_RMPObject_Event_Name.sql                                        ~~
+~~                                                                                                                            ~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~                            Copyright (c) 2023-2023 Metaversal Corporation. All rights reserved.                            ~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+
+DELIMITER $$
+
+CREATE PROCEDURE call_RMPObject_Event_Name
+(
+   IN    twRMPObjectIx                 BIGINT,
+   IN    Name_wsRMPObjectId            VARCHAR (48),
+   OUT   bError                        INT
+)
+BEGIN
+       DECLARE SBO_CLASS_NULL                             INT DEFAULT 0;
+       DECLARE SBO_CLASS_RMPOBJECT                        INT DEFAULT 73;
+
+       DECLARE twEventIz BIGINT;
+
+          CALL call_RMPObject_Event (twRMPObjectIx, twEventIz, bError);
+            IF bError = 0
+          THEN
+                 UPDATE RMPObject
+                    SET Name_wsRMPObjectId = Name_wsRMPObjectId
+                  WHERE ObjectHead_Self_twObjectIx = twRMPObjectIx;
+
+                    SET bError = IF (ROW_COUNT () = 1, 0, 1);
+
+                     IF bError = 0
+                   THEN
+                          INSERT INTO Event
+                                 (sType, Self_wClass, Self_twObjectIx, Child_wClass, Child_twObjectIx, wFlags, twEventIz, sJSON_Object, sJSON_Child, sJSON_Change)
+                          SELECT 'NAME',
+
+                                 SBO_CLASS_RMPOBJECT,
+                                 twRMPObjectIx,
+                                 SBO_CLASS_NULL,
+                                 0,
+                                 0,
+                                 twEventIz,
+
+                                 CONCAT
+                                 (
+                                   '{ ',
+                                     '"pName": ',         Format_Name_P
+                                                          (
+                                                             Name_wsRMPObjectId
+                                                          ),
+                                  ' }'
+                                 ),
+
+                                 '{ }',
+
+                                 '{ }';
+
+                             SET bError = IF (ROW_COUNT () = 1, 0, 1);
                  END IF ;
         END IF ;
 END$$
@@ -1752,7 +1842,7 @@ BEGIN
                                  CONCAT
                                  (
                                    '{ ',
-                                     '"Owner": ',         Format_Owner
+                                     '"pOwner": ',        Format_Owner
                                                           (
                                                              Owner_twRPersonaIx
                                                           ),
@@ -1822,7 +1912,7 @@ BEGIN
                                  CONCAT
                                  (
                                    '{ ',
-                                     '"Resource": ',      Format_Resource
+                                     '"pResource": ',     Format_Resource
                                                           (
                                                              Resource_qwResource,
                                                              Resource_sName,
@@ -1913,6 +2003,7 @@ DELIMITER $$
 CREATE PROCEDURE call_RMPObject_Event_RMPObject_Open
 (
    IN    twRMPObjectIx                 BIGINT,
+   IN    Name_wsRMPObjectId            VARCHAR (48),
    IN    Type_bType                    TINYINT UNSIGNED,
    IN    Type_bSubtype                 TINYINT UNSIGNED,
    IN    Type_bFiction                 TINYINT UNSIGNED,
@@ -1947,8 +2038,8 @@ BEGIN
             IF bError = 0
           THEN
                  INSERT INTO RMPObject
-                        (ObjectHead_Parent_wClass, ObjectHead_Parent_twObjectIx, ObjectHead_Self_wClass, ObjectHead_twEventIz, ObjectHead_wFlags, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ)
-                 VALUES (SBO_CLASS_RMPOBJECT,      twRMPObjectIx,                SBO_CLASS_RMPOBJECT,    0,                    32,                Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ);
+                        (ObjectHead_Parent_wClass, ObjectHead_Parent_twObjectIx, ObjectHead_Self_wClass, ObjectHead_twEventIz, ObjectHead_wFlags, Name_wsRMPObjectId, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ)
+                 VALUES (SBO_CLASS_RMPOBJECT,      twRMPObjectIx,                SBO_CLASS_RMPOBJECT,    0,                    32,                Name_wsRMPObjectId, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ);
 
                     SET bError = IF (ROW_COUNT () = 1, 0, 1);
 
@@ -1972,24 +2063,28 @@ BEGIN
                                  CONCAT
                                  (
                                    '{ ',
-                                     '"Type": ',          Format_Type_P
+                                     '"pName": ',         Format_Name_P
+                                                          (
+                                                             Name_wsRMPObjectId
+                                                          ),
+                                   ', "pType": ',         Format_Type_P
                                                           (
                                                              Type_bType,
                                                              Type_bSubtype,
                                                              Type_bFiction,
                                                              Type_bMovable
                                                           ),
-                                   ', "Owner": ',         Format_Owner
+                                   ', "pOwner": ',        Format_Owner
                                                           (
                                                              Owner_twRPersonaIx
                                                           ),
-                                   ', "Resource": ',      Format_Resource
+                                   ', "pResource": ',     Format_Resource
                                                           (
                                                              Resource_qwResource,
                                                              Resource_sName,
                                                              Resource_sReference
                                                           ),
-                                   ', "Transform": ',     Format_Transform
+                                   ', "pTransform": ',    Format_Transform
                                                           (
                                                              Transform_Position_dX,
                                                              Transform_Position_dY,
@@ -2002,7 +2097,7 @@ BEGIN
                                                              Transform_Scale_dY,
                                                              Transform_Scale_dZ
                                                           ),
-                                   ', "Bound": ',         Format_Bound
+                                   ', "pBound": ',        Format_Bound
                                                           (
                                                              Bound_dX,
                                                              Bound_dY,
@@ -2086,7 +2181,7 @@ BEGIN
                                  CONCAT
                                  (
                                    '{ ',
-                                     '"Transform": ',     Format_Transform
+                                     '"pTransform": ',    Format_Transform
                                                           (
                                                              Transform_Position_dX,
                                                              Transform_Position_dY,
@@ -2167,7 +2262,7 @@ BEGIN
                                  CONCAT
                                  (
                                    '{ ',
-                                     '"Type": ',          Format_Type_P
+                                     '"pType": ',         Format_Type_P
                                                           (
                                                              Type_bType,
                                                              Type_bSubtype,
@@ -2243,7 +2338,7 @@ BEGIN
         SELECT CONCAT
                (
                  '{ ',
-                    '"ObjectHead": ',    Format_ObjectHead
+                    '"pObjectHead": ',   Format_ObjectHead
                                          (
                                             p.ObjectHead_Parent_wClass,
                                             p.ObjectHead_Parent_twObjectIx,
@@ -2255,24 +2350,24 @@ BEGIN
 
                   ', "twRMPObjectIx": ', p.ObjectHead_Self_twObjectIx,      -- is this necessary
 
-                  ', "Type": ',          Format_Type_P
+                  ', "pType": ',         Format_Type_P
                                          (
                                             p.Type_bType,
                                             p.Type_bSubtype,
                                             p.Type_bFiction,
                                             p.Type_bMovable
                                          ),
-                  ', "Owner": ',         Format_Owner
+                  ', "pOwner": ',        Format_Owner
                                          (
                                             p.Owner_twRPersonaIx
                                          ),
-                  ', "Resource": ',      Format_Resource
+                  ', "pResource": ',     Format_Resource
                                          (
                                             p.Resource_qwResource,
                                             p.Resource_sName,
                                             p.Resource_sReference
                                          ),
-                  ', "Transform": ',     Format_Transform
+                  ', "pTransform": ',    Format_Transform
                                          (
                                             p.Transform_Position_dX,
                                             p.Transform_Position_dY,
@@ -2285,7 +2380,7 @@ BEGIN
                                             p.Transform_Scale_dY,
                                             p.Transform_Scale_dZ
                                          ),
-                  ', "Bound": ',         Format_Bound
+                  ', "pBound": ',        Format_Bound
                                          (
                                             p.Bound_dX,
                                             p.Bound_dY,
@@ -2400,6 +2495,34 @@ BEGIN
                      -- validate bound is inside  parent's   bound
                      -- validate bound is outside children's bound
                     SET nError = nError;
+        END IF ;
+END$$
+  
+DELIMITER ;
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~                                                                                                                            ~~
+~~                                       MVD_RP1_Map : call_RMPObject_Validate_Name.sql                                       ~~
+~~                                                                                                                            ~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~                            Copyright (c) 2023-2023 Metaversal Corporation. All rights reserved.                            ~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+
+DELIMITER $$
+
+CREATE PROCEDURE call_RMPObject_Validate_Name
+(
+   IN    ObjectHead_Parent_wClass      SMALLINT,
+   IN    ObjectHead_Parent_twObjectIx  BIGINT,
+   IN    twRMPObjectIx                 BIGINT,
+   IN    Name_wsRMPObjectId            VARCHAR (48),
+   INOUT nError                        INT
+)
+BEGIN
+            IF Name_wsRMPObjectId IS NULL
+          THEN
+                   CALL call_Error (21, 'Name_wsRMPObjectId is NULL', nError);
         END IF ;
 END$$
   
@@ -2852,6 +2975,117 @@ DELIMITER ;
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ~~                                                                                                                            ~~
+~~                                            MVD_RP1_Map : set_RMPObject_Name.sql                                            ~~
+~~                                                                                                                            ~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~                              Copyright 2023-2025 Metaversal Corporation. All rights reserved.                              ~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+
+DELIMITER $$
+
+CREATE PROCEDURE set_RMPObject_Name
+(
+   IN    sIPAddress                    VARCHAR (16),
+   IN    twRPersonaIx                  BIGINT,
+   IN    twRMPObjectIx                 BIGINT,
+   IN    Name_wsRMPObjectId            VARCHAR (48),
+   OUT   nResult                       INT
+)
+BEGIN
+       DECLARE RMPOBJECT_OP_NAME                          INT DEFAULT 1;
+
+       DECLARE nError  INT DEFAULT 0;
+       DECLARE bCommit INT DEFAULT 0;
+       DECLARE bError  INT;
+
+       DECLARE ObjectHead_Parent_wClass     SMALLINT;
+       DECLARE ObjectHead_Parent_twObjectIx BIGINT;
+
+            -- Create the temp Error table
+        CREATE TEMPORARY TABLE Error
+               (
+                  nOrder                        INT             NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                  dwError                       INT             NOT NULL,
+                  sError                        VARCHAR (255)   NOT NULL
+               );
+
+            -- Create the temp Event table
+        CREATE TEMPORARY TABLE Event
+               (
+                  nOrder                        INT             NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                  sType                         VARCHAR (50)    NOT NULL,
+                  Self_wClass                   SMALLINT        NOT NULL,
+                  Self_twObjectIx               BIGINT          NOT NULL,
+                  Child_wClass                  SMALLINT        NOT NULL,
+                  Child_twObjectIx              BIGINT          NOT NULL,
+                  wFlags                        SMALLINT        NOT NULL,
+                  twEventIz                     BIGINT          NOT NULL,
+                  sJSON_Object                  TEXT            NOT NULL,
+                  sJSON_Child                   TEXT            NOT NULL,
+                  sJSON_Change                  TEXT            NOT NULL
+               );
+
+           SET twRPersonaIx  = IFNULL (twRPersonaIx,  0);
+           SET twRMPObjectIx = IFNULL (twRMPObjectIx, 0);
+
+         START TRANSACTION;
+
+          CALL call_RMPObject_Validate (twRPersonaIx, twRMPObjectIx, ObjectHead_Parent_wClass, ObjectHead_Parent_twObjectIx, nError);
+            IF nError = 0
+          THEN
+                   CALL call_RMPObject_Validate_Name (ObjectHead_Parent_wClass, ObjectHead_Parent_twObjectIx, twRMPObjectIx, Name_wsRMPObjectId, nError);
+        END IF ;
+
+            IF nError = 0
+          THEN
+                   CALL call_RMPObject_Event_Name (twRMPObjectIx, Name_wsRMPObjectId, bError);
+                     IF bError = 0
+                   THEN
+                             SET bCommit = 1;
+                   ELSE 
+                            CALL call_Error (-1, 'Failed to update RMPObject', nError);
+                 END IF ;
+        END IF ;
+       
+            IF bCommit = 1
+          THEN
+                    SET bCommit = 0;
+                 
+                   CALL call_RMPObject_Log (RMPOBJECT_OP_NAME, sIPAddress, twRPersonaIx, twRMPObjectIx, bError);
+                     IF bError = 0
+                   THEN
+                            CALL call_Event_Push (bError);
+                              IF bError = 0
+                            THEN
+                                      SET bCommit = 1;
+                            ELSE
+                                     CALL call_Error (-9, 'Failed to push events', nError);
+                          END IF ;
+                   ELSE
+                            CALL call_Error (-8, 'Failed to log action', nError);
+                 END IF ;
+        END IF ;
+
+            IF bCommit = 0
+          THEN
+                 SELECT dwError, sError FROM Error;
+
+               ROLLBACK ;
+          ELSE
+                 COMMIT ;
+        END IF ;
+
+          DROP TEMPORARY TABLE Error;
+          DROP TEMPORARY TABLE Event;
+
+           SET nResult = bCommit - 1 - nError;
+END$$
+  
+DELIMITER ;
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~                                                                                                                            ~~
 ~~                                            MVD_RP1_Map : set_RMPObject_Owner.sql                                           ~~
 ~~                                                                                                                            ~~
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -3217,6 +3451,7 @@ CREATE PROCEDURE set_RMPObject_RMPObject_Open
    IN    sIPAddress                    VARCHAR (16),
    IN    twRPersonaIx                  BIGINT,
    IN    twRMPObjectIx                 BIGINT,
+   IN    Name_wsRMPObjectId            VARCHAR (48),
    IN    Type_bType                    TINYINT UNSIGNED,
    IN    Type_bSubtype                 TINYINT UNSIGNED,
    IN    Type_bFiction                 TINYINT UNSIGNED,
@@ -3285,6 +3520,7 @@ BEGIN
           CALL call_RMPObject_Validate (twRPersonaIx, twRMPObjectIx, ObjectHead_Parent_wClass, ObjectHead_Parent_twObjectIx, nError);
             IF nError = 0
           THEN
+                   CALL call_RMPObject_Validate_Name      (SBO_CLASS_RMPOBJECT, twRMPObjectIx, 0, Name_wsRMPObjectId, nError);
                    CALL call_RMPObject_Validate_Type      (SBO_CLASS_RMPOBJECT, twRMPObjectIx, 0, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, nError);
                    CALL call_RMPObject_Validate_Owner     (SBO_CLASS_RMPOBJECT, twRMPObjectIx, 0, Owner_twRPersonaIx, nError);
                    CALL call_RMPObject_Validate_Resource  (SBO_CLASS_RMPOBJECT, twRMPObjectIx, 0, Resource_qwResource, Resource_sName, Resource_sReference, nError);
@@ -3294,7 +3530,7 @@ BEGIN
 
             IF nError = 0
           THEN
-                   CALL call_RMPObject_Event_RMPObject_Open (twRMPObjectIx, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ, twRMPObjectIx_Open, bError);
+                   CALL call_RMPObject_Event_RMPObject_Open (twRMPObjectIx, Name_wsRMPObjectId, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ, twRMPObjectIx_Open, bError);
                      IF bError = 0
                    THEN
                           SELECT twRMPObjectIx_Open AS twRMPObject;
@@ -4449,7 +4685,7 @@ BEGIN
                                  CONCAT
                                  (
                                    '{ ',
-                                     '"Bound": ',         Format_Bound
+                                     '"pBound": ',        Format_Bound
                                                           (
                                                              Bound_dX,
                                                              Bound_dY,
@@ -4517,7 +4753,7 @@ BEGIN
                                  CONCAT
                                  (
                                    '{ ',
-                                     '"Name": ',          Format_Name_T
+                                     '"pName": ',         Format_Name_T
                                                           (
                                                              Name_wsRMTObjectId
                                                           ),
@@ -4583,7 +4819,7 @@ BEGIN
                                  CONCAT
                                  (
                                    '{ ',
-                                     '"Owner": ',         Format_Owner
+                                     '"pOwner": ',        Format_Owner
                                                           (
                                                              Owner_twRPersonaIx
                                                           ),
@@ -4655,7 +4891,7 @@ BEGIN
                                  CONCAT
                                  (
                                    '{ ',
-                                     '"Properties": ',    Format_Properties_T
+                                     '"pProperties": ',   Format_Properties_T
                                                           (
                                                              Properties_bLockToGround,
                                                              Properties_bYouth,
@@ -4728,7 +4964,7 @@ BEGIN
                                  CONCAT
                                  (
                                    '{ ',
-                                     '"Resource": ',      Format_Resource
+                                     '"pResource": ',     Format_Resource
                                                           (
                                                              Resource_qwResource,
                                                              Resource_sName,
@@ -4820,6 +5056,7 @@ DELIMITER $$
 CREATE PROCEDURE call_RMTObject_Event_RMPObject_Open
 (
    IN    twRMTObjectIx                 BIGINT,
+   IN    Name_wsRMPObjectId            VARCHAR (48),
    IN    Type_bType                    TINYINT UNSIGNED,
    IN    Type_bSubtype                 TINYINT UNSIGNED,
    IN    Type_bFiction                 TINYINT UNSIGNED,
@@ -4855,8 +5092,8 @@ BEGIN
             IF bError = 0
           THEN
                  INSERT INTO RMPObject
-                        (ObjectHead_Parent_wClass, ObjectHead_Parent_twObjectIx, ObjectHead_Self_wClass, ObjectHead_twEventIz, ObjectHead_wFlags, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ)
-                 VALUES (SBO_CLASS_RMTOBJECT,      twRMTObjectIx,                SBO_CLASS_RMPOBJECT,    0,                    32,                Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ);
+                        (ObjectHead_Parent_wClass, ObjectHead_Parent_twObjectIx, ObjectHead_Self_wClass, ObjectHead_twEventIz, ObjectHead_wFlags, Name_wsRMPObjectId, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ)
+                 VALUES (SBO_CLASS_RMTOBJECT,      twRMTObjectIx,                SBO_CLASS_RMPOBJECT,    0,                    32,                Name_wsRMPObjectId, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ);
 
                     SET bError = IF (ROW_COUNT () = 1, 0, 1);
 
@@ -4880,24 +5117,28 @@ BEGIN
                                  CONCAT
                                  (
                                    '{ ',
-                                     '"Type": ',          Format_Type_P
+                                     '"pName": ',         Format_Name_P
+                                                          (
+                                                             Name_wsRMPObjectId
+                                                          ),
+                                   ', "pType": ',         Format_Type_P
                                                           (
                                                              Type_bType,
                                                              Type_bSubtype,
                                                              Type_bFiction,
                                                              Type_bMovable
                                                           ),
-                                   ', "Owner": ',         Format_Owner
+                                   ', "pOwner": ',        Format_Owner
                                                           (
                                                              Owner_twRPersonaIx
                                                           ),
-                                   ', "Resource": ',      Format_Resource
+                                   ', "pResource": ',     Format_Resource
                                                           (
                                                              Resource_qwResource,
                                                              Resource_sName,
                                                              Resource_sReference
                                                           ),
-                                   ', "Transform": ',     Format_Transform
+                                   ', "pTransform": ',    Format_Transform
                                                           (
                                                              Transform_Position_dX,
                                                              Transform_Position_dY,
@@ -4910,7 +5151,7 @@ BEGIN
                                                              Transform_Scale_dY,
                                                              Transform_Scale_dZ
                                                           ),
-                                   ', "Bound": ',         Format_Bound
+                                   ', "pBound": ',        Format_Bound
                                                           (
                                                              Bound_dX,
                                                              Bound_dY,
@@ -5077,27 +5318,27 @@ BEGIN
                                  CONCAT
                                  (
                                    '{ ',
-                                     '"Name": ',          Format_Name_T
+                                     '"pName": ',         Format_Name_T
                                                           (
                                                              Name_wsRMTObjectId
                                                           ),
-                                   ', "Type": ',          Format_Type_T
+                                   ', "pType": ',         Format_Type_T
                                                           (
                                                              Type_bType,
                                                              Type_bSubtype,
                                                              Type_bFiction
                                                           ),
-                                   ', "Owner": ',         Format_Owner
+                                   ', "pOwner": ',        Format_Owner
                                                           (
                                                              Owner_twRPersonaIx
                                                           ),
-                                   ', "Resource": ',      Format_Resource
+                                   ', "pResource": ',     Format_Resource
                                                           (
                                                              Resource_qwResource,
                                                              Resource_sName,
                                                              Resource_sReference
                                                           ),
-                                   ', "Transform": ',     Format_Transform
+                                   ', "pTransform": ',    Format_Transform
                                                           (
                                                              Transform_Position_dX,
                                                              Transform_Position_dY,
@@ -5110,13 +5351,13 @@ BEGIN
                                                              Transform_Scale_dY,
                                                              Transform_Scale_dZ
                                                           ),
-                                   ', "Bound": ',         Format_Bound
+                                   ', "pBound": ',        Format_Bound
                                                           (
                                                              Bound_dX,
                                                              Bound_dY,
                                                              Bound_dZ
                                                           ),
-                                   ', "Properties": ',    Format_Properties_T
+                                   ', "pProperties": ',   Format_Properties_T
                                                           (
                                                              Properties_bLockToGround,
                                                              Properties_bYouth,
@@ -5201,7 +5442,7 @@ BEGIN
                                  CONCAT
                                  (
                                    '{ ',
-                                     '"Transform": ',     Format_Transform
+                                     '"pTransform": ',    Format_Transform
                                                           (
                                                              Transform_Position_dX,
                                                              Transform_Position_dY,
@@ -5280,7 +5521,7 @@ BEGIN
                                  CONCAT
                                  (
                                    '{ ',
-                                     '"Type": ',          Format_Type_T
+                                     '"pType": ',         Format_Type_T
                                                           (
                                                              Type_bType,
                                                              Type_bSubtype,
@@ -5355,7 +5596,7 @@ BEGIN
         SELECT CONCAT
                (
                  '{ ',
-                    '"ObjectHead": ',    Format_ObjectHead
+                    '"pObjectHead": ',   Format_ObjectHead
                                          (
                                             t.ObjectHead_Parent_wClass,
                                             t.ObjectHead_Parent_twObjectIx,
@@ -5367,27 +5608,27 @@ BEGIN
 
                   ', "twRMTObjectIx": ', t.ObjectHead_Self_twObjectIx,      -- is this necessary
 
-                  ', "Name": ',          Format_Name_T
+                  ', "pName": ',         Format_Name_T
                                          (
                                             t.Name_wsRMTObjectId
                                          ),
-                  ', "Type": ',          Format_Type_T
+                  ', "pType": ',         Format_Type_T
                                          (
                                             t.Type_bType,
                                             t.Type_bSubtype,
                                             t.Type_bFiction
                                          ),
-                  ', "Owner": ',         Format_Owner
+                  ', "pOwner": ',        Format_Owner
                                          (
                                             t.Owner_twRPersonaIx
                                          ),
-                  ', "Resource": ',      Format_Resource
+                  ', "pResource": ',     Format_Resource
                                          (
                                             t.Resource_qwResource,
                                             t.Resource_sName,
                                             t.Resource_sReference
                                          ),
-                  ', "Transform": ',     Format_Transform
+                  ', "pTransform": ',    Format_Transform
                                          (
                                             t.Transform_Position_dX,
                                             t.Transform_Position_dY,
@@ -5400,13 +5641,13 @@ BEGIN
                                             t.Transform_Scale_dY,
                                             t.Transform_Scale_dZ
                                          ),
-                  ', "Bound": ',         Format_Bound
+                  ', "pBound": ',        Format_Bound
                                          (
                                             t.Bound_dX,
                                             t.Bound_dY,
                                             t.Bound_dZ
                                          ),
-                  ', "Properties": ',    Format_Properties_T
+                  ', "pProperties": ',   Format_Properties_T
                                          (
                                             t.Properties_bLockToGround,
                                             t.Properties_bYouth,
@@ -7072,6 +7313,7 @@ CREATE PROCEDURE set_RMTObject_RMPObject_Open
    IN    sIPAddress                    VARCHAR (16),
    IN    twRPersonaIx                  BIGINT,
    IN    twRMTObjectIx                 BIGINT,
+   IN    Name_wsRMPObjectId            VARCHAR (48),
    IN    Type_bType                    TINYINT UNSIGNED,
    IN    Type_bSubtype                 TINYINT UNSIGNED,
    IN    Type_bFiction                 TINYINT UNSIGNED,
@@ -7140,6 +7382,7 @@ BEGIN
           CALL call_RMTObject_Validate (twRPersonaIx, twRMTObjectIx, ObjectHead_Parent_wClass, ObjectHead_Parent_twObjectIx, nError);
             IF nError = 0
           THEN
+                   CALL call_RMPObject_Validate_Name      (SBO_CLASS_RMTOBJECT, twRMTObjectIx, 0, Name_wsRMPObjectId, nError);
                    CALL call_RMPObject_Validate_Type      (SBO_CLASS_RMTOBJECT, twRMTObjectIx, 0, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, nError);
                    CALL call_RMPObject_Validate_Owner     (SBO_CLASS_RMTOBJECT, twRMTObjectIx, 0, Owner_twRPersonaIx, nError);
                    CALL call_RMPObject_Validate_Resource  (SBO_CLASS_RMTOBJECT, twRMTObjectIx, 0, Resource_qwResource, Resource_sName, Resource_sReference, nError);
@@ -7149,7 +7392,7 @@ BEGIN
 
             IF nError = 0
           THEN
-                   CALL call_RMTObject_Event_RMPObject_Open (twRMTObjectIx, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ, twRMPObjectIx_Open, bError);
+                   CALL call_RMTObject_Event_RMPObject_Open (twRMTObjectIx, Name_wsRMPObjectId, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ, twRMPObjectIx_Open, bError);
                      IF bError = 0
                    THEN
                           SELECT twRMPObjectIx_Open AS twRMPObject;
@@ -7885,7 +8128,7 @@ BEGIN
                                  CONCAT
                                  (
                                    '{ ',
-                                     '"Bound": ',         Format_Bound
+                                     '"pBound": ',        Format_Bound
                                                           (
                                                              Bound_dX,
                                                              Bound_dY,
@@ -7953,7 +8196,7 @@ BEGIN
                                  CONCAT
                                  (
                                    '{ ',
-                                     '"Name": ',          Format_Name_C
+                                     '"pName": ',         Format_Name_C
                                                           (
                                                              Name_wsRMCObjectId
                                                           ),
@@ -8025,7 +8268,7 @@ BEGIN
                                  CONCAT
                                  (
                                    '{ ',
-                                     '"Orbit_Spin": ',    Format_Orbit_Spin
+                                     '"pOrbit_Spin": ',   Format_Orbit_Spin
                                                           (
                                                              Orbit_Spin_tmPeriod,
                                                              Orbit_Spin_tmStart,
@@ -8094,7 +8337,7 @@ BEGIN
                                  CONCAT
                                  (
                                    '{ ',
-                                     '"Owner": ',         Format_Owner
+                                     '"pOwner": ',        Format_Owner
                                                           (
                                                              Owner_twRPersonaIx
                                                           ),
@@ -8168,7 +8411,7 @@ BEGIN
                                  CONCAT
                                  (
                                    '{ ',
-                                     '"Properties": ',    Format_Properties_C
+                                     '"pProperties": ',   Format_Properties_C
                                                           (
                                                              Properties_fMass,
                                                              Properties_fGravity,
@@ -8242,7 +8485,7 @@ BEGIN
                                  CONCAT
                                  (
                                    '{ ',
-                                     '"Resource": ',      Format_Resource
+                                     '"pResource": ',     Format_Resource
                                                           (
                                                              Resource_qwResource,
                                                              Resource_sName,
@@ -8401,27 +8644,27 @@ BEGIN
                                  CONCAT
                                  (
                                    '{ ',
-                                     '"Name": ',          Format_Name_C
+                                     '"pName": ',         Format_Name_C
                                                           (
                                                              Name_wsRMCObjectId
                                                           ),
-                                   ', "Type": ',          Format_Type_C
+                                   ', "pType": ',         Format_Type_C
                                                           (
                                                              Type_bType,
                                                              Type_bSubtype,
                                                              Type_bFiction
                                                           ),
-                                   ', "Owner": ',         Format_Owner
+                                   ', "pOwner": ',        Format_Owner
                                                           (
                                                              Owner_twRPersonaIx
                                                           ),
-                                   ', "Resource": ',      Format_Resource
+                                   ', "pResource": ',     Format_Resource
                                                           (
                                                              Resource_qwResource,
                                                              Resource_sName,
                                                              Resource_sReference
                                                           ),
-                                   ', "Transform": ',     Format_Transform
+                                   ', "pTransform": ',    Format_Transform
                                                           (
                                                              Transform_Position_dX,
                                                              Transform_Position_dY,
@@ -8434,20 +8677,20 @@ BEGIN
                                                              Transform_Scale_dY,
                                                              Transform_Scale_dZ
                                                           ),
-                                   ', "Orbit_Spin": ',    Format_Orbit_Spin
+                                   ', "pOrbit_Spin": ',   Format_Orbit_Spin
                                                           (
                                                              Orbit_Spin_tmPeriod,
                                                              Orbit_Spin_tmStart,
                                                              Orbit_Spin_dA,
                                                              Orbit_Spin_dB
                                                           ),
-                                   ', "Bound": ',         Format_Bound
+                                   ', "pBound": ',        Format_Bound
                                                           (
                                                              Bound_dX,
                                                              Bound_dY,
                                                              Bound_dZ
                                                           ),
-                                   ', "Properties": ',    Format_Properties_C
+                                   ', "pProperties": ',   Format_Properties_C
                                                           (
                                                              Properties_fMass,
                                                              Properties_fGravity,
@@ -8617,27 +8860,27 @@ BEGIN
                                  CONCAT
                                  (
                                    '{ ',
-                                     '"Name": ',          Format_Name_T
+                                     '"pName": ',         Format_Name_T
                                                           (
                                                              Name_wsRMTObjectId
                                                           ),
-                                   ', "Type": ',          Format_Type_T
+                                   ', "pType": ',         Format_Type_T
                                                           (
                                                              Type_bType,
                                                              Type_bSubtype,
                                                              Type_bFiction
                                                           ),
-                                   ', "Owner": ',         Format_Owner
+                                   ', "pOwner": ',        Format_Owner
                                                           (
                                                              Owner_twRPersonaIx
                                                           ),
-                                   ', "Resource": ',      Format_Resource
+                                   ', "pResource": ',     Format_Resource
                                                           (
                                                              Resource_qwResource,
                                                              Resource_sName,
                                                              Resource_sReference
                                                           ),
-                                   ', "Transform": ',     Format_Transform
+                                   ', "pTransform": ',    Format_Transform
                                                           (
                                                              Transform_Position_dX,
                                                              Transform_Position_dY,
@@ -8650,13 +8893,13 @@ BEGIN
                                                              Transform_Scale_dY,
                                                              Transform_Scale_dZ
                                                           ),
-                                   ', "Bound": ',         Format_Bound
+                                   ', "pBound": ',        Format_Bound
                                                           (
                                                              Bound_dX,
                                                              Bound_dY,
                                                              Bound_dZ
                                                           ),
-                                   ', "Properties": ',    Format_Properties_T
+                                   ', "pProperties": ',   Format_Properties_T
                                                           (
                                                              Properties_bLockToGround,
                                                              Properties_bYouth,
@@ -8741,7 +8984,7 @@ BEGIN
                                  CONCAT
                                  (
                                    '{ ',
-                                     '"Transform": ',     Format_Transform
+                                     '"pTransform": ',    Format_Transform
                                                           (
                                                              Transform_Position_dX,
                                                              Transform_Position_dY,
@@ -8820,7 +9063,7 @@ BEGIN
                                  CONCAT
                                  (
                                    '{ ',
-                                     '"Type": ',          Format_Type_C
+                                     '"pType": ',         Format_Type_C
                                                           (
                                                              Type_bType,
                                                              Type_bSubtype,
@@ -8893,7 +9136,7 @@ BEGIN
         SELECT CONCAT
                (
                  '{ ',
-                    '"ObjectHead": ',    Format_ObjectHead
+                    '"pObjectHead": ',   Format_ObjectHead
                                          (
                                             c.ObjectHead_Parent_wClass,
                                             c.ObjectHead_Parent_twObjectIx,
@@ -8905,27 +9148,27 @@ BEGIN
 
                   ', "twRMCObjectIx": ', c.ObjectHead_Self_twObjectIx,      -- is this necessary
 
-                  ', "Name": ',          Format_Name_C
+                  ', "pName": ',         Format_Name_C
                                          (
                                             c.Name_wsRMCObjectId
                                          ),
-                  ', "Type": ',          Format_Type_C
+                  ', "pType": ',         Format_Type_C
                                          (
                                             c.Type_bType,
                                             c.Type_bSubtype,
                                             c.Type_bFiction
                                          ),
-                  ', "Owner": ',         Format_Owner
+                  ', "pOwner": ',        Format_Owner
                                          (
                                             c.Owner_twRPersonaIx
                                          ),
-                  ', "Resource": ',      Format_Resource
+                  ', "pResource": ',     Format_Resource
                                          (
                                             c.Resource_qwResource,
                                             c.Resource_sName,
                                             c.Resource_sReference
                                          ),
-                  ', "Transform": ',     Format_Transform
+                  ', "pTransform": ',    Format_Transform
                                          (
                                             c.Transform_Position_dX,
                                             c.Transform_Position_dY,
@@ -8938,20 +9181,20 @@ BEGIN
                                             c.Transform_Scale_dY,
                                             c.Transform_Scale_dZ
                                          ),
-                  ', "Orbit_Spin": ',    Format_Orbit_Spin
+                  ', "pOrbit_Spin": ',   Format_Orbit_Spin
                                          (
                                             c.Orbit_Spin_tmPeriod,
                                             c.Orbit_Spin_tmStart,
                                             c.Orbit_Spin_dA,
                                             c.Orbit_Spin_dB
                                          ),
-                  ', "Bound": ',         Format_Bound
+                  ', "pBound": ',        Format_Bound
                                          (
                                             c.Bound_dX,
                                             c.Bound_dY,
                                             c.Bound_dZ
                                          ),
-                  ', "Properties": ',    Format_Properties_C
+                  ', "pProperties": ',   Format_Properties_C
                                          (
                                             c.Properties_fMass,
                                             c.Properties_fGravity,
@@ -11331,7 +11574,7 @@ BEGIN
                                  CONCAT
                                  (
                                    '{ ',
-                                     '"Name": ',          Format_Name_R
+                                     '"pName": ',         Format_Name_R
                                                           (
                                                              Name_wsRMRootId
                                                           ),
@@ -11397,7 +11640,7 @@ BEGIN
                                  CONCAT
                                  (
                                    '{ ',
-                                     '"Owner": ',         Format_Owner
+                                     '"pOwner": ',        Format_Owner
                                                           (
                                                              Owner_twRPersonaIx
                                                           ),
@@ -11556,27 +11799,27 @@ BEGIN
                                  CONCAT
                                  (
                                    '{ ',
-                                     '"Name": ',          Format_Name_C
+                                     '"pName": ',         Format_Name_C
                                                           (
                                                              Name_wsRMCObjectId
                                                           ),
-                                   ', "Type": ',          Format_Type_C
+                                   ', "pType": ',         Format_Type_C
                                                           (
                                                              Type_bType,
                                                              Type_bSubtype,
                                                              Type_bFiction
                                                           ),
-                                   ', "Owner": ',         Format_Owner
+                                   ', "pOwner": ',        Format_Owner
                                                           (
                                                              Owner_twRPersonaIx
                                                           ),
-                                   ', "Resource": ',      Format_Resource
+                                   ', "pResource": ',     Format_Resource
                                                           (
                                                              Resource_qwResource,
                                                              Resource_sName,
                                                              Resource_sReference
                                                           ),
-                                   ', "Transform": ',     Format_Transform
+                                   ', "pTransform": ',    Format_Transform
                                                           (
                                                              Transform_Position_dX,
                                                              Transform_Position_dY,
@@ -11589,20 +11832,20 @@ BEGIN
                                                              Transform_Scale_dY,
                                                              Transform_Scale_dZ
                                                           ),
-                                   ', "Orbit_Spin": ',    Format_Orbit_Spin
+                                   ', "pOrbit_Spin": ',   Format_Orbit_Spin
                                                           (
                                                              Orbit_Spin_tmPeriod,
                                                              Orbit_Spin_tmStart,
                                                              Orbit_Spin_dA,
                                                              Orbit_Spin_dB
                                                           ),
-                                   ', "Bound": ',         Format_Bound
+                                   ', "pBound": ',        Format_Bound
                                                           (
                                                              Bound_dX,
                                                              Bound_dY,
                                                              Bound_dZ
                                                           ),
-                                   ', "Properties": ',    Format_Properties_C
+                                   ', "pProperties": ',   Format_Properties_C
                                                           (
                                                              Properties_fMass,
                                                              Properties_fGravity,
@@ -11694,6 +11937,7 @@ DELIMITER $$
 CREATE PROCEDURE call_RMRoot_Event_RMPObject_Open
 (
    IN    twRMRootIx                    BIGINT,
+   IN    Name_wsRMPObjectId            VARCHAR (48),
    IN    Type_bType                    TINYINT UNSIGNED,
    IN    Type_bSubtype                 TINYINT UNSIGNED,
    IN    Type_bFiction                 TINYINT UNSIGNED,
@@ -11729,8 +11973,8 @@ BEGIN
             IF bError = 0
           THEN
                  INSERT INTO RMPObject
-                        (ObjectHead_Parent_wClass, ObjectHead_Parent_twObjectIx, ObjectHead_Self_wClass, ObjectHead_twEventIz, ObjectHead_wFlags, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ)
-                 VALUES (SBO_CLASS_RMROOT,         twRMRootIx,                   SBO_CLASS_RMPOBJECT,    0,                    32,                Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ);
+                        (ObjectHead_Parent_wClass, ObjectHead_Parent_twObjectIx, ObjectHead_Self_wClass, ObjectHead_twEventIz, ObjectHead_wFlags, Name_wsRMPObjectId, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ)
+                 VALUES (SBO_CLASS_RMROOT,         twRMRootIx,                   SBO_CLASS_RMPOBJECT,    0,                    32,                Name_wsRMPObjectId, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ);
 
                     SET bError = IF (ROW_COUNT () = 1, 0, 1);
 
@@ -11754,24 +11998,28 @@ BEGIN
                                  CONCAT
                                  (
                                    '{ ',
-                                     '"Type": ',          Format_Type_P
+                                     '"pName": ',         Format_Name_P
+                                                          (
+                                                             Name_wsRMPObjectId
+                                                          ),
+                                   ', "pType": ',         Format_Type_P
                                                           (
                                                              Type_bType,
                                                              Type_bSubtype,
                                                              Type_bFiction,
                                                              Type_bMovable
                                                           ),
-                                   ', "Owner": ',         Format_Owner
+                                   ', "pOwner": ',        Format_Owner
                                                           (
                                                              Owner_twRPersonaIx
                                                           ),
-                                   ', "Resource": ',      Format_Resource
+                                   ', "pResource": ',     Format_Resource
                                                           (
                                                              Resource_qwResource,
                                                              Resource_sName,
                                                              Resource_sReference
                                                           ),
-                                   ', "Transform": ',     Format_Transform
+                                   ', "pTransform": ',    Format_Transform
                                                           (
                                                              Transform_Position_dX,
                                                              Transform_Position_dY,
@@ -11784,7 +12032,7 @@ BEGIN
                                                              Transform_Scale_dY,
                                                              Transform_Scale_dZ
                                                           ),
-                                   ', "Bound": ',         Format_Bound
+                                   ', "pBound": ',        Format_Bound
                                                           (
                                                              Bound_dX,
                                                              Bound_dY,
@@ -11938,27 +12186,27 @@ BEGIN
                                  CONCAT
                                  (
                                    '{ ',
-                                     '"Name": ',          Format_Name_T
+                                     '"pName": ',         Format_Name_T
                                                           (
                                                              Name_wsRMTObjectId
                                                           ),
-                                   ', "Type": ',          Format_Type_T
+                                   ', "pType": ',         Format_Type_T
                                                           (
                                                              Type_bType,
                                                              Type_bSubtype,
                                                              Type_bFiction
                                                           ),
-                                   ', "Owner": ',         Format_Owner
+                                   ', "pOwner": ',        Format_Owner
                                                           (
                                                              Owner_twRPersonaIx
                                                           ),
-                                   ', "Resource": ',      Format_Resource
+                                   ', "pResource": ',     Format_Resource
                                                           (
                                                              Resource_qwResource,
                                                              Resource_sName,
                                                              Resource_sReference
                                                           ),
-                                   ', "Transform": ',     Format_Transform
+                                   ', "pTransform": ',    Format_Transform
                                                           (
                                                              Transform_Position_dX,
                                                              Transform_Position_dY,
@@ -11971,13 +12219,13 @@ BEGIN
                                                              Transform_Scale_dY,
                                                              Transform_Scale_dZ
                                                           ),
-                                   ', "Bound": ',         Format_Bound
+                                   ', "pBound": ',        Format_Bound
                                                           (
                                                              Bound_dX,
                                                              Bound_dY,
                                                              Bound_dZ
                                                           ),
-                                   ', "Properties": ',    Format_Properties_T
+                                   ', "pProperties": ',   Format_Properties_T
                                                           (
                                                              Properties_bLockToGround,
                                                              Properties_bYouth,
@@ -12049,7 +12297,7 @@ BEGIN
         SELECT CONCAT
                (
                  '{ ',
-                    '"ObjectHead": ',    Format_ObjectHead
+                    '"pObjectHead": ',   Format_ObjectHead
                                          (
                                             r.ObjectHead_Parent_wClass,
                                             r.ObjectHead_Parent_twObjectIx,
@@ -12061,11 +12309,11 @@ BEGIN
  
                   ', "twRMRootIx": ',    r.ObjectHead_Self_twObjectIx,      -- is this necessary
  
-                  ', "Name": ',          Format_Name_R
+                  ', "pName": ',         Format_Name_R
                                          (
                                             r.Name_wsRMRootId
                                          ),
-                  ', "Owner": ',         Format_Owner
+                  ', "pOwner": ',        Format_Owner
                                          (
                                             r.Owner_twRPersonaIx
                                          ),
@@ -12941,6 +13189,7 @@ CREATE PROCEDURE set_RMRoot_RMPObject_Open
    IN    sIPAddress                    VARCHAR (16),
    IN    twRPersonaIx                  BIGINT,
    IN    twRMRootIx                    BIGINT,
+   IN    Name_wsRMPObjectId            VARCHAR (48),
    IN    Type_bType                    TINYINT UNSIGNED,
    IN    Type_bSubtype                 TINYINT UNSIGNED,
    IN    Type_bFiction                 TINYINT UNSIGNED,
@@ -13009,6 +13258,7 @@ BEGIN
           CALL call_RMRoot_Validate (twRPersonaIx, twRMRootIx, ObjectHead_Parent_wClass, ObjectHead_Parent_twObjectIx, nError);
             IF nError = 0
           THEN
+                   CALL call_RMPObject_Validate_Name      (SBO_CLASS_RMROOT, twRMRootIx, 0, Name_wsRMPObjectId, nError);
                    CALL call_RMPObject_Validate_Type      (SBO_CLASS_RMROOT, twRMRootIx, 0, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, nError);
                    CALL call_RMPObject_Validate_Owner     (SBO_CLASS_RMROOT, twRMRootIx, 0, Owner_twRPersonaIx, nError);
                    CALL call_RMPObject_Validate_Resource  (SBO_CLASS_RMROOT, twRMRootIx, 0, Resource_qwResource, Resource_sName, Resource_sReference, nError);
@@ -13018,7 +13268,7 @@ BEGIN
 
             IF nError = 0
           THEN
-                   CALL call_RMRoot_Event_RMPObject_Open (twRMRootIx, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ, twRMPObjectIx_Open, bError);
+                   CALL call_RMRoot_Event_RMPObject_Open (twRMRootIx, Name_wsRMPObjectId, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ, twRMPObjectIx_Open, bError);
                      IF bError = 0
                    THEN
                           SELECT twRMPObjectIx_Open AS twRMPObject;

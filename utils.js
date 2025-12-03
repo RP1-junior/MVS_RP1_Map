@@ -88,7 +88,7 @@ function RunQuery2Ex (Session, pData, fnRSP, fn, bRecover, pSQLData)
                   // TODO: Only Join the socket and send recover IF we are not subscribed
                   if (bRecover && result.output.nResult == 0)
                   {
-                     pObjectHead = JSON.parse (result.recordsets[0][0].Object).ObjectHead;
+                     pObjectHead = JSON.parse (result.recordsets[0][0].Object).pObjectHead;
 
                      let sChannelName = pObjectHead.wClass_Object + '-' + pObjectHead.twObjectIx;
 

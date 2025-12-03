@@ -40,6 +40,14 @@ class HndlrRMPObject extends MVHANDLER
                }
             },
 
+            'RMPObject:name': {
+               SqlData: {
+                  sProc: 'set_RMPObject_Name',
+                  aData: [ 'twRMPObjectIx', 'Name_wsRMPObjectId' ],
+                  Param: 1
+               }
+            },
+
             'RMPObject:owner': {
                SqlData: {
                   sProc: 'set_RMPObject_Owner',
@@ -74,6 +82,7 @@ class HndlrRMPObject extends MVHANDLER
                SqlData: {
                   sProc: 'set_RMPObject_RMPObject_Open',
                   aData: [ 'twRMPObjectIx',
+                           'Name_wsRMPObjectId',
                            'Type_bType', 'Type_bSubtype', 'Type_bFiction', 'Type_bMovable',
                            'Owner_twRPersonaIx', 
                            'Resource_qwResource', 'Resource_sName', 'Resource_sReference', 
