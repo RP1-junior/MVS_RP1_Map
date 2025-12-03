@@ -13674,7 +13674,8 @@ CALL set_RMRoot_RMPObject_Open
    1,                         -- Transform_Scale_dZ   
    150,                       -- Bound_dX             
    150,                       -- Bound_dY             
-   150                        -- Bound_dZ             
+   150,                       -- Bound_dZ             
+   NULL                       -- nResult
 );
 -- twRMPObjectIx = 1
 
@@ -13705,7 +13706,8 @@ CALL set_RMPObject_RMPObject_Open
    1,                         -- Transform_Scale_dZ   
    134.65382385253906,        -- Bound_dX             
    13.596150933846705,        -- Bound_dY             
-   129.60743890149325         -- Bound_dZ             
+   129.60743890149325,        -- Bound_dZ             
+   NULL                       -- nResult
 );
 -- twRMPObjectIx = 2
 
