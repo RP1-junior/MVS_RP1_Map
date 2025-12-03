@@ -253,7 +253,12 @@ class MVSF_Map
             {
                await pConnection.query (
                   `INSERT INTO RMPObject (ObjectHead_Parent_wClass, ObjectHead_Parent_twObjectIx, ObjectHead_Self_wClass, ObjectHead_Self_twObjectIx, ObjectHead_twEventIz, ObjectHead_wFlags, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                  [70, 1, 73, null, 1, 32, 1, 0, 1, 0, 25, 0, '', sSceneUrl, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 150, 150, 150]
+                  [70, 1, 73, null, 1, 32, 1, 0, 1, 0, 25, 0, '', '', 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 200, 200, 200]
+               );
+
+               await pConnection.query (
+                  `INSERT INTO RMPObject (ObjectHead_Parent_wClass, ObjectHead_Parent_twObjectIx, ObjectHead_Self_wClass, ObjectHead_Self_twObjectIx, ObjectHead_twEventIz, ObjectHead_wFlags, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                  [73, 1, 73, null, 1, 32, 1, 0, 1, 0, 25, 0, '', sSceneUrl, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 150, 150, 150]
                );
                console.log ('Initial RMPObject row inserted successfully.');
             }
