@@ -242,7 +242,7 @@ CREATE TABLE RMPObject
    ObjectHead_twEventIz                BIGINT            NOT NULL,
    ObjectHead_wFlags                   SMALLINT          NOT NULL,
 
-   Name_wsRMPObjectId                  VARCHAR (48)      NOT NULL,
+   Name_wsRMPObjectId                  VARCHAR (48)      NOT NULL DEFAULT '',
    Type_bType                          TINYINT UNSIGNED  NOT NULL,
    Type_bSubtype                       TINYINT UNSIGNED  NOT NULL,
    Type_bFiction                       TINYINT UNSIGNED  NOT NULL,
