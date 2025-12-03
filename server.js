@@ -24,7 +24,7 @@ class MVSF_Map
       switch (Settings.SQL.type)
       {
       case 'MYSQL':
-         this.#pSQL = new MVSQL_MYSQL (Settings.SQL.config, this.onSQLReady.bind (this)); 
+         this.#pSQL = new MVSQL_MYSQL (Settings.SQL.config, this.onSQLReady.bind (this));
          break;
 
       default:
@@ -33,7 +33,7 @@ class MVSF_Map
       }
    }
 
-   #GetToken (sToken) 
+   #GetToken (sToken)
    {
       const match = sToken.match (/<([^>]+)>/);
       return match ? match[1] : null;
@@ -42,7 +42,7 @@ class MVSF_Map
    ReadFromEnv (Config, aFields)
    {
       let sValue;
-      
+
       for (let i=0; i < aFields.length; i++)
       {
          if ((sValue = this.#GetToken (Config[aFields[i]])) != null)
@@ -53,16 +53,16 @@ class MVSF_Map
    ProcessFabricConfig ()
    {
       const sFabricPath = path.join (__dirname, 'web', 'public', 'config', 'fabric.msf.json');
-      
+
       try
       {
          let sContent = fs.readFileSync (sFabricPath, 'utf8');
-         
+
          // Replace all occurrences of <PUBLIC_DOMAIN> with the actual environment variable
          // Check for PUBLIC_DOMAIN first, fallback to RAILWAY_PUBLIC_DOMAIN for Railway compatibility
          const sPublicDomain = process.env.PUBLIC_DOMAIN || process.env.RAILWAY_PUBLIC_DOMAIN || '';
          sContent = sContent.replace (/<PUBLIC_DOMAIN>/g, sPublicDomain);
-         
+
          fs.writeFileSync (sFabricPath, sContent, 'utf8');
       }
       catch (err)
@@ -85,7 +85,7 @@ class MVSF_Map
 
          // Check for DELIMITER command (must be at start of line, case-insensitive)
          const nDelimiterMatch = sTrimmedLine.match (/^DELIMITER\s+(.+)$/i);
-         
+
          if (nDelimiterMatch)
          {
             // If we have accumulated a statement, save it before changing delimiter
@@ -122,18 +122,18 @@ class MVSF_Map
          {
             // Check if delimiter is at the end (allowing for trailing whitespace)
             const sAfterDelimiter = sCurrentStatement.substring (nDelimiterIndex + sCurrentDelimiter.length).trim ();
-            
+
             // If there's only whitespace or newlines after the delimiter, it's the end of the statement
             if (sAfterDelimiter.length === 0 || /^[\r\n\s]*$/.test (sAfterDelimiter))
             {
                // Extract the statement (without the delimiter)
                const sStatement = sCurrentStatement.substring (0, nDelimiterIndex).trim ();
-               
+
                if (sStatement.length > 0 && !sStatement.match (/^--/))
                {
                   aStatements.push (sStatement);
                }
-               
+
                sCurrentStatement = '';
             }
          }
@@ -208,7 +208,7 @@ class MVSF_Map
             for (let i = 0; i < aStatements.length; i++)
             {
                const sStatement = aStatements[i];
-               
+
                // Skip empty statements and comments
                if (!sStatement || sStatement.trim ().length === 0 || sStatement.trim ().match (/^--/))
                   continue;
@@ -216,7 +216,7 @@ class MVSF_Map
                try
                {
                   await pConnection.query (sStatement);
-                  
+
                   // Log progress for large imports
                   if ((i + 1) % 50 === 0)
                   {
@@ -244,16 +244,16 @@ class MVSF_Map
             // Add initial RMPObject row with public URL (only when database is first created)
             // Ensure we're using the correct database
             await pConnection.query (`USE ${sDatabaseName}`);
-            
+
             // Check for PUBLIC_DOMAIN first, fallback to RAILWAY_PUBLIC_DOMAIN for Railway compatibility
             const sPublicDomain = process.env.PUBLIC_DOMAIN || process.env.RAILWAY_PUBLIC_DOMAIN || '';
             const sSceneUrl = sPublicDomain ? `https://${sPublicDomain}/scenes/scene.glb` : 'https://MYAPPURL.COM/scenes/scene.glb';
-            
+
             try
             {
                await pConnection.query (
                   `INSERT INTO RMPObject (ObjectHead_Parent_wClass, ObjectHead_Parent_twObjectIx, ObjectHead_Self_wClass, ObjectHead_Self_twObjectIx, ObjectHead_twEventIz, ObjectHead_wFlags, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                  [70, 1, 73, null, 1, 32, 1, 0, 1, 0, 25, 0, '', sSceneUrl, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 500, 500, 250]
+                  [70, 1, 73, null, 1, 32, 1, 0, 1, 0, 25, 0, '', sSceneUrl, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 150, 150, 150]
                );
                console.log ('Initial RMPObject row inserted successfully.');
             }
