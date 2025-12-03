@@ -49,6 +49,11 @@ let isAltPressed = false;
 let isDuplicating = false;
 let originalObject = null;
 
+// Camera panning state
+let isSpacePressed = false;
+let panDirection = { left: false, right: false, up: false, down: false };
+const PAN_SPEED = 0.05; // Pan speed multiplier for smooth movement
+
 scene.add(new THREE.HemisphereLight(0xffffff,0x444444,1.2));
 const dirLight = new THREE.DirectionalLight(0xffffff,1);
 dirLight.position.set(5, 10, 7);
@@ -2943,7 +2948,7 @@ window.addEventListener("keydown", e => {
     const key = e.key.toLowerCase();
     const inForm = (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA");
     const isJSONEditor = jsonEditor && (jsonEditor === e.target || (jsonEditor.contains && jsonEditor.contains(e.target)));
-    const isHotkey = ["w", "e", "r", "q", "f", "h", "z", "delete", "d", "alt"].includes(key);
+    const isHotkey = ["w", "e", "r", "q", "f", "h", "z", "delete", "d", "alt", " "].includes(key);
 
     // Block all hotkeys when JSON editor is focused
     if (isJSONEditor)
@@ -2955,6 +2960,29 @@ window.addEventListener("keydown", e => {
     // Track Alt key for duplication
     if (key === "alt") {
         isAltPressed = true;
+    }
+
+    // Track Spacebar for camera panning
+    if (key === " " || e.code === "Space") {
+        e.preventDefault(); // Prevent page scroll
+        isSpacePressed = true;
+    }
+
+    // Track Arrow keys for panning direction
+    if (isSpacePressed) {
+        if (e.key === "ArrowLeft" || e.code === "ArrowLeft") {
+            e.preventDefault();
+            panDirection.left = true;
+        } else if (e.key === "ArrowRight" || e.code === "ArrowRight") {
+            e.preventDefault();
+            panDirection.right = true;
+        } else if (e.key === "ArrowUp" || e.code === "ArrowUp") {
+            e.preventDefault();
+            panDirection.up = true;
+        } else if (e.key === "ArrowDown" || e.code === "ArrowDown") {
+            e.preventDefault();
+            panDirection.down = true;
+        }
     }
 
     switch (key) {
@@ -3023,6 +3051,27 @@ window.addEventListener("keyup", e => {
     // Track Alt key release
     if (key === "alt") {
         isAltPressed = false;
+    }
+
+    // Track Spacebar release
+    if (key === " " || e.code === "Space") {
+        isSpacePressed = false;
+        // Reset all pan directions when spacebar is released
+        panDirection.left = false;
+        panDirection.right = false;
+        panDirection.up = false;
+        panDirection.down = false;
+    }
+
+    // Track Arrow key releases
+    if (e.key === "ArrowLeft" || e.code === "ArrowLeft") {
+        panDirection.left = false;
+    } else if (e.key === "ArrowRight" || e.code === "ArrowRight") {
+        panDirection.right = false;
+    } else if (e.key === "ArrowUp" || e.code === "ArrowUp") {
+        panDirection.up = false;
+    } else if (e.key === "ArrowDown" || e.code === "ArrowDown") {
+        panDirection.down = false;
     }
 }
 );
@@ -3243,6 +3292,40 @@ function undo() {
 // ===== Render loop =====
 function animate() {
     requestAnimationFrame(animate);
+    
+    // Smooth camera panning with spacebar + arrow keys
+    if (isSpacePressed) {
+        const panVector = new THREE.Vector3();
+        
+        // Calculate right vector based on camera orientation
+        const forward = new THREE.Vector3();
+        camera.getWorldDirection(forward);
+        const right = new THREE.Vector3();
+        right.crossVectors(forward, camera.up).normalize();
+        
+        // Horizontal panning (left/right)
+        if (panDirection.left) {
+            panVector.add(right.clone().multiplyScalar(-PAN_SPEED));
+        }
+        if (panDirection.right) {
+            panVector.add(right.clone().multiplyScalar(PAN_SPEED));
+        }
+        
+        // Vertical panning (up/down)
+        if (panDirection.up) {
+            panVector.add(camera.up.clone().multiplyScalar(PAN_SPEED));
+        }
+        if (panDirection.down) {
+            panVector.add(camera.up.clone().multiplyScalar(-PAN_SPEED));
+        }
+        
+        // Apply panning to both camera position and orbit target
+        if (panVector.length() > 0) {
+            camera.position.add(panVector);
+            orbit.target.add(panVector);
+        }
+    }
+    
     orbit.update();
     renderer.render(scene, camera);
 }
