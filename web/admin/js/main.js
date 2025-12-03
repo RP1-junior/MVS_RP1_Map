@@ -54,6 +54,10 @@ let isSpacePressed = false;
 let panDirection = { left: false, right: false, up: false, down: false };
 const PAN_SPEED = 0.05; // Pan speed multiplier for smooth movement
 
+// Free camera movement state (arrow keys without Space)
+let freeMoveDirection = { left: false, right: false, up: false, down: false };
+const FREE_MOVE_SPEED = 0.1; // Free movement speed multiplier
+
 scene.add(new THREE.HemisphereLight(0xffffff,0x444444,1.2));
 const dirLight = new THREE.DirectionalLight(0xffffff,1);
 dirLight.position.set(5, 10, 7);
@@ -2968,9 +2972,19 @@ window.addEventListener("keydown", e => {
     if (key === " " || e.code === "Space") {
         e.preventDefault(); // Prevent page scroll
         isSpacePressed = true;
+        // Transfer any active free movement directions to panning
+        if (freeMoveDirection.left) panDirection.left = true;
+        if (freeMoveDirection.right) panDirection.right = true;
+        if (freeMoveDirection.up) panDirection.up = true;
+        if (freeMoveDirection.down) panDirection.down = true;
+        // Reset free movement directions
+        freeMoveDirection.left = false;
+        freeMoveDirection.right = false;
+        freeMoveDirection.up = false;
+        freeMoveDirection.down = false;
     }
 
-    // Track Arrow keys for panning direction
+    // Track Arrow keys for panning direction (only when Space is pressed)
     if (isSpacePressed) {
         if (e.key === "ArrowLeft" || e.code === "ArrowLeft") {
             e.preventDefault();
@@ -2984,6 +2998,21 @@ window.addEventListener("keydown", e => {
         } else if (e.key === "ArrowDown" || e.code === "ArrowDown") {
             e.preventDefault();
             panDirection.down = true;
+        }
+    } else {
+        // Track Arrow keys for free camera movement (when Space is NOT pressed)
+        if (e.key === "ArrowLeft" || e.code === "ArrowLeft") {
+            e.preventDefault();
+            freeMoveDirection.left = true;
+        } else if (e.key === "ArrowRight" || e.code === "ArrowRight") {
+            e.preventDefault();
+            freeMoveDirection.right = true;
+        } else if (e.key === "ArrowUp" || e.code === "ArrowUp") {
+            e.preventDefault();
+            freeMoveDirection.up = true;
+        } else if (e.key === "ArrowDown" || e.code === "ArrowDown") {
+            e.preventDefault();
+            freeMoveDirection.down = true;
         }
     }
 
@@ -3058,6 +3087,11 @@ window.addEventListener("keyup", e => {
     // Track Spacebar release
     if (key === " " || e.code === "Space") {
         isSpacePressed = false;
+        // Transfer any active pan directions to free movement before resetting
+        if (panDirection.left) freeMoveDirection.left = true;
+        if (panDirection.right) freeMoveDirection.right = true;
+        if (panDirection.up) freeMoveDirection.up = true;
+        if (panDirection.down) freeMoveDirection.down = true;
         // Reset all pan directions when spacebar is released
         panDirection.left = false;
         panDirection.right = false;
@@ -3065,15 +3099,28 @@ window.addEventListener("keyup", e => {
         panDirection.down = false;
     }
 
-    // Track Arrow key releases
-    if (e.key === "ArrowLeft" || e.code === "ArrowLeft") {
-        panDirection.left = false;
-    } else if (e.key === "ArrowRight" || e.code === "ArrowRight") {
-        panDirection.right = false;
-    } else if (e.key === "ArrowUp" || e.code === "ArrowUp") {
-        panDirection.up = false;
-    } else if (e.key === "ArrowDown" || e.code === "ArrowDown") {
-        panDirection.down = false;
+    // Track Arrow key releases for panning
+    if (isSpacePressed) {
+        if (e.key === "ArrowLeft" || e.code === "ArrowLeft") {
+            panDirection.left = false;
+        } else if (e.key === "ArrowRight" || e.code === "ArrowRight") {
+            panDirection.right = false;
+        } else if (e.key === "ArrowUp" || e.code === "ArrowUp") {
+            panDirection.up = false;
+        } else if (e.key === "ArrowDown" || e.code === "ArrowDown") {
+            panDirection.down = false;
+        }
+    } else {
+        // Track Arrow key releases for free movement
+        if (e.key === "ArrowLeft" || e.code === "ArrowLeft") {
+            freeMoveDirection.left = false;
+        } else if (e.key === "ArrowRight" || e.code === "ArrowRight") {
+            freeMoveDirection.right = false;
+        } else if (e.key === "ArrowUp" || e.code === "ArrowUp") {
+            freeMoveDirection.up = false;
+        } else if (e.key === "ArrowDown" || e.code === "ArrowDown") {
+            freeMoveDirection.down = false;
+        }
     }
 }
 );
@@ -3325,6 +3372,38 @@ function animate() {
         if (panVector.length() > 0) {
             camera.position.add(panVector);
             orbit.target.add(panVector);
+        }
+    }
+
+    // Free camera movement with arrow keys (without Space)
+    if (!isSpacePressed) {
+        const moveVector = new THREE.Vector3();
+
+        // Calculate right vector based on camera orientation
+        const forward = new THREE.Vector3();
+        camera.getWorldDirection(forward);
+        const right = new THREE.Vector3();
+        right.crossVectors(forward, camera.up).normalize();
+
+        // Horizontal movement (left/right)
+        if (freeMoveDirection.left) {
+            moveVector.add(right.clone().multiplyScalar(-FREE_MOVE_SPEED));
+        }
+        if (freeMoveDirection.right) {
+            moveVector.add(right.clone().multiplyScalar(FREE_MOVE_SPEED));
+        }
+
+        // Forward/backward movement (up/down arrows)
+        if (freeMoveDirection.up) {
+            moveVector.add(forward.clone().multiplyScalar(FREE_MOVE_SPEED));
+        }
+        if (freeMoveDirection.down) {
+            moveVector.add(forward.clone().multiplyScalar(-FREE_MOVE_SPEED));
+        }
+
+        // Apply free movement to camera position only (not orbit target)
+        if (moveVector.length() > 0) {
+            camera.position.add(moveVector);
         }
     }
 
