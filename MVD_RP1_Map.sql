@@ -2714,18 +2714,18 @@ BEGIN
 
             IF ObjectHead_Parent_wClass = SBO_CLASS_RMPOBJECT
           THEN
-                 SELECT Type_bType,   Type_bSubtype
+                 SELECT o.Type_bType, o.Type_bSubtype
                    INTO Parent_bType, Parent_bSubtype
                    FROM RMPObject AS o
-                  WHERE ObjectHead_Self_twObjectIx = ObjectHead_Parent_twObjectIx;
+                  WHERE o.ObjectHead_Self_twObjectIx = ObjectHead_Parent_twObjectIx;
         END IF ;
 
             IF twRMPObjectIx > 0
           THEN
-                 SELECT Type_bType, Type_bSubtype
+                 SELECT o.Type_bType, o.Type_bSubtype
                    INTO Self_bType, Self_bSubtype
                    FROM RMPObject AS o
-                  WHERE ObjectHead_Self_twObjectIx = twRMPObjectIx;
+                  WHERE o.ObjectHead_Self_twObjectIx = twRMPObjectIx;
 -- get max children's type and subtype
 
         END IF ;
