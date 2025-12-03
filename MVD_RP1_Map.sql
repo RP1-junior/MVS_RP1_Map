@@ -13693,7 +13693,7 @@ BEGIN
           1,                         -- twRPersonaIx         
           1,                         -- twRMPObjectIx        
           'Hello World!',            -- Name_wsRMPObjectId   
-          1,                         -- Type_bType           
+          2,                         -- Type_bType           
           0,                         -- Type_bSubtype        
           1,                         -- Type_bFiction        
           0,                         -- Type_bMovable        
