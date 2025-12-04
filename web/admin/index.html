@@ -79,7 +79,7 @@
                         <div class="px-3 py-2 d-flex align-items-center w-100 gap-3">
                            <label for="canvasSize" class="form-label w-100 m-0">Canvas&nbsp;Size</label>
                            <input type="text" class="form-control" id="canvasSize" placeholder="20" value="20" style="width:5rem">
-                           <button type="submit" class="btn btn-outline-light">Set</button>
+                           <button type="submit" class="btn btn-outline-light" id="setCanvasSize">Set</button>
                         </div>
                      </li>
                   </ul>
@@ -186,7 +186,32 @@
       </div>
    </div>
 
-
+   <!-- Modal for unsaved changes warning -->
+   <div class="modal fade" id="unsavedChangesModal" tabindex="-1" aria-labelledby="unsavedChangesModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+         <div class="modal-content bg-dark text-light">
+            <div class="modal-header border-0 pb-1">
+               <h5 class="modal-title" id="unsavedChangesModalLabel">
+                  <i class="fa-solid fa-triangle-exclamation me-2"></i>Unsaved Code Changes
+               </h5>
+               <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+               <p>You have unsaved code changes in the Code Editor. Please apply or discard your changes before making edits to the 3D scene.</p>
+               <p class="small text-muted">Discarding changes will simply revert the code changes you have made.</p>
+               <p class="mb-0 text-center"><strong>What would you like to do?</strong></p>
+            </div>
+            <div class="modal-footer d-flex justify-content-between border-0">
+               <button type="button" class="btn btn-secondary rounded-5" id="discardChangesFromModal">
+                  <i class="fa-solid fa-eraser me-1"></i>Discard Changes
+               </button>
+               <button type="button" class="btn btn-primary rounded-5" id="applyChangesFromModal">
+                  <i class="fa-solid fa-arrows-spin fa-spin me-1"></i>Apply Changes
+               </button>
+            </div>
+         </div>
+      </div>
+   </div>
 
    <script type="module">
       import {
@@ -213,7 +238,9 @@
       import {
          defaultKeymap,
          history,
-         historyKeymap
+         historyKeymap,
+         undo,
+         redo
       } from 'https://esm.sh/@codemirror/commands@6';
       import {
          searchKeymap,
@@ -303,6 +330,15 @@
          },
          focus() {
             view.focus();
+         },
+         hasFocus() {
+            return view.hasFocus;
+         },
+         undo() {
+            undo({state: view.state, dispatch: view.dispatch});
+         },
+         redo() {
+            redo({state: view.state, dispatch: view.dispatch});
          }
       };
 

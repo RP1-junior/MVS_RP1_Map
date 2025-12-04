@@ -260,12 +260,14 @@ const triCountElement = document.getElementById("triCount");
 const texCountElement = document.getElementById("texCount");
 const snapCheckbox = document.getElementById("snap");
 const canvasSizeInput = document.getElementById("canvasSize");
+const btnSetCanvasSize = document.getElementById("setCanvasSize");
 const btnTranslate = document.getElementById("translate");
 const btnRotate = document.getElementById("rotate");
 const btnScale = document.getElementById("scale");
 const btnDelete = document.getElementById("delete");
 const objControls = document.getElementById("objControls");
 const btnUndo = document.getElementById("undo");
+const btnRedo = document.getElementById("redo");
 const btnResetCamera = document.getElementById("resetCamera");
 const jsonEditor = document.getElementById("jsonEditor");
 function getJSONEditorText() {
@@ -1270,6 +1272,16 @@ function isChildObjectSelectedFromSidebar(obj) {
 
 // ===== Selection (unified) =====
 function selectObject(obj, additive=false, toggle=false) {
+    // Allow deselection (toggle off) even with unsaved changes
+    if (toggle && selectedObjects.includes(obj)) {
+        // This is deselection, allow it
+    } else if (!additive && !toggle && hasUnsavedCodeChanges()) {
+        // Block new selection if there are unsaved changes
+        if (!checkUnsavedChangesBeforeEdit()) {
+            return;
+        }
+    }
+    
     if (!additive && !toggle) {
         selectedObjects.forEach(o => {
             o.userData.listItem?.classList.remove("selected");
@@ -1720,6 +1732,13 @@ fileInput.addEventListener("change", async e => {
     const file = e.target.files[0];
     if (!file)
         return;
+    
+    // Block file loading if there are unsaved changes
+    if (!checkUnsavedChangesBeforeEdit()) {
+        // Reset file input
+        e.target.value = '';
+        return;
+    }
     const url = URL.createObjectURL(file);
 
     try {
@@ -1752,7 +1771,7 @@ fileInput.addEventListener("change", async e => {
         selectObject(model);
         updateBoxHelper(model);
         frameCameraOn(model);
-        saveState();
+        saveSceneState('create', [model]);
         updateJSONEditorFromScene();
     } catch (error) {
         console.error("Failed to load file:", error);
@@ -1768,6 +1787,11 @@ fileInput.addEventListener("change", async e => {
 function groupSelectedObjects() {
     if (selectedObjects.length < 2)
         return;
+    
+    // Block grouping if there are unsaved changes
+    if (!checkUnsavedChangesBeforeEdit()) {
+        return;
+    }
 
     // Use the first (top-most) selected object as the parent group
     const parentObj = selectedObjects[0];
@@ -1867,6 +1891,11 @@ function groupSelectedObjects() {
 function ungroupSelectedObject() {
     if (selectedObjects.length !== 1)
         return;
+    
+    // Block ungrouping if there are unsaved changes
+    if (!checkUnsavedChangesBeforeEdit()) {
+        return;
+    }
     let group = selectedObjects[0];
 
     // If the selected object is a child in a group (not the group itself), dissolve the parent group
@@ -2786,6 +2815,11 @@ function generateUniqueName(baseName) {
 function duplicateSelectedObjects() {
     if (selectedObjects.length === 0)
         return;
+    
+    // Block duplication if there are unsaved changes
+    if (!checkUnsavedChangesBeforeEdit()) {
+        return;
+    }
 
     const duplicates = [];
     const offset = new THREE.Vector3(1,0,1);
@@ -2831,6 +2865,9 @@ function duplicateSelectedObjects() {
 
     // Select the duplicated objects
     if (duplicates.length > 0) {
+        // Save state after duplication
+        saveSceneState('duplicate', duplicates);
+        
         selectedObjects.forEach(obj => {
             obj.userData.listItem?.classList.remove("selected");
             setHelperVisible(obj, false);
@@ -2867,6 +2904,18 @@ function duplicateSelectedObjects() {
 function deleteObject(obj) {
     if (!obj || obj.userData?.isCanvasRoot)
         return;
+    
+    // Block deletion if there are unsaved changes
+    if (!checkUnsavedChangesBeforeEdit()) {
+        return;
+    }
+    
+    // Save state before deletion
+    const objectsToDelete = obj instanceof THREE.Group ? 
+        [obj, ...obj.children.filter(child => !child.userData?.isCanvasRoot)] : 
+        [obj];
+    saveSceneState('delete', objectsToDelete);
+    
     if (transform.object === obj)
         transform.detach();
 
@@ -2932,8 +2981,22 @@ function resetCamera() {
 }
 
 // ===== Canvas size & snap =====
-canvasSizeInput.addEventListener("change", e => {
-    groundSize = parseFloat(e.target.value) || 20;
+function setCanvasSize() {
+    // Block canvas size change if there are unsaved changes
+    if (!checkUnsavedChangesBeforeEdit()) {
+        // Reset to previous value
+        if (canvasSizeInput) {
+            canvasSizeInput.value = groundSize;
+        }
+        return;
+    }
+    
+    const newSize = parseFloat(canvasSizeInput.value) || 20;
+    if (newSize === groundSize) {
+        return; // No change needed
+    }
+    
+    groundSize = newSize;
     scene.remove(grid);
     grid = new THREE.GridHelper(groundSize,groundSize,0x888888,0x444444);
     grid.userData.isSelectable = false;
@@ -2964,9 +3027,28 @@ canvasSizeInput.addEventListener("change", e => {
     // Update JSON editor
     updateJSONEditor();
 }
+
+canvasSizeInput.addEventListener("change", e => {
+    setCanvasSize();
+}
 );
 
+// Wire up the Set button
+if (btnSetCanvasSize) {
+    btnSetCanvasSize.addEventListener("click", e => {
+        e.preventDefault(); // Prevent form submission if inside a form
+        setCanvasSize();
+    }
+    );
+}
+
 snapCheckbox.addEventListener("change", e => {
+    // Block snap change if there are unsaved changes
+    if (!checkUnsavedChangesBeforeEdit()) {
+        // Reset to previous state
+        e.target.checked = !e.target.checked;
+        return;
+    }
     const enabled = e.target.checked;
     transform.setTranslationSnap(enabled ? 1 : null);
     transform.setRotationSnap(enabled ? THREE.MathUtils.degToRad(15) : null);
@@ -3014,6 +3096,13 @@ renderer.domElement.addEventListener("mousemove", e => {
 );
 
 renderer.domElement.addEventListener("click", e => {
+    // Block canvas selection if there are unsaved changes
+    if (hasUnsavedCodeChanges()) {
+        if (!checkUnsavedChangesBeforeEdit()) {
+            return;
+        }
+    }
+    
     const rect = renderer.domElement.getBoundingClientRect();
     const mouse = new THREE.Vector2(((e.clientX - rect.left) / rect.width) * 2 - 1,-((e.clientY - rect.top) / rect.height) * 2 + 1);
     const raycaster = new THREE.Raycaster();
@@ -3152,18 +3241,21 @@ window.addEventListener("keydown", e => {
 
     switch (key) {
     case "w":
+        if (!checkUnsavedChangesBeforeEdit()) break;
         if (isEditingAllowed()) {
             transform.setMode("translate");
             updateTransformButtonActiveState();
         }
         break;
     case "e":
+        if (!checkUnsavedChangesBeforeEdit()) break;
         if (isEditingAllowed()) {
             transform.setMode("rotate");
             updateTransformButtonActiveState();
         }
         break;
     case "r":
+        if (!checkUnsavedChangesBeforeEdit()) break;
         if (isEditingAllowed()) {
             transform.setMode("scale");
             updateTransformButtonActiveState();
@@ -3190,6 +3282,7 @@ window.addEventListener("keydown", e => {
             break;
         }
     case "delete":
+        if (!checkUnsavedChangesBeforeEdit()) break;
         // Filter out canvas root from deletion
         const objectsToDelete = selectedObjects.filter(obj => !obj.userData?.isCanvasRoot);
         if (objectsToDelete.length)
@@ -3205,13 +3298,27 @@ window.addEventListener("keydown", e => {
     case "d":
         if ((e.ctrlKey || e.metaKey) && !inForm) {
             e.preventDefault();
+            if (!checkUnsavedChangesBeforeEdit()) break;
             duplicateSelectedObjects();
         }
         break;
     default:
-        if ((e.ctrlKey || e.metaKey) && key === "z") {
-            e.preventDefault();
-            undo();
+        // Only handle undo/redo if code editor is not focused (let CodeMirror handle it when focused)
+        if (!isCodeEditorFocused()) {
+            if ((e.ctrlKey || e.metaKey) && key === "z") {
+                e.preventDefault();
+                if (e.shiftKey) {
+                    // Ctrl+Shift+Z or Cmd+Shift+Z for redo
+                    redo();
+                } else {
+                    // Ctrl+Z or Cmd+Z for undo
+                    undo();
+                }
+            } else if ((e.ctrlKey || e.metaKey) && key === "y") {
+                e.preventDefault();
+                // Ctrl+Y or Cmd+Y for redo
+                redo();
+            }
         }
         break;
     }
@@ -3269,6 +3376,7 @@ window.addEventListener("keyup", e => {
 
 // ===== Fix #ui buttons =====
 btnTranslate.onclick = () => {
+    if (!checkUnsavedChangesBeforeEdit()) return;
     if (isEditingAllowed()) {
         transform.setMode("translate");
         updateTransformButtonActiveState();
@@ -3276,6 +3384,7 @@ btnTranslate.onclick = () => {
 }
 ;
 btnRotate.onclick = () => {
+    if (!checkUnsavedChangesBeforeEdit()) return;
     if (isEditingAllowed()) {
         transform.setMode("rotate");
         updateTransformButtonActiveState();
@@ -3283,6 +3392,7 @@ btnRotate.onclick = () => {
 }
 ;
 btnScale.onclick = () => {
+    if (!checkUnsavedChangesBeforeEdit()) return;
     if (isEditingAllowed()) {
         transform.setMode("scale");
         updateTransformButtonActiveState();
@@ -3290,6 +3400,7 @@ btnScale.onclick = () => {
 }
 ;
 btnDelete.onclick = () => {
+    if (!checkUnsavedChangesBeforeEdit()) return;
     // Filter out canvas root from deletion
     const objectsToDelete = selectedObjects.filter(obj => !obj.userData?.isCanvasRoot);
     if (objectsToDelete.length)
@@ -3304,6 +3415,9 @@ btnDelete.onclick = () => {
 }
 ;
 btnUndo.onclick = () => undo();
+if (btnRedo) {
+    btnRedo.onclick = () => redo();
+}
 btnResetCamera.onclick = () => resetCamera();
 
 // ===== Resize =====
@@ -3322,6 +3436,13 @@ transform.addEventListener("dragging-changed", e => {
     orbit.enabled = !e.value;
 
     if (e.value) {
+        // Block transform if there are unsaved changes
+        if (!checkUnsavedChangesBeforeEdit()) {
+            // Detach transform to prevent dragging
+            transform.detach();
+            orbit.enabled = true;
+            return;
+        }
         // Starting to drag - store the last valid position
         if (selectedObject && !selectedObject.userData?.isCanvasRoot) {
             lastValidPosition = selectedObject.position.clone();
@@ -3413,8 +3534,16 @@ transform.addEventListener("dragging-changed", e => {
         }
         );
 
-        if (!isDuplicating)
-            saveState();
+        if (!isDuplicating) {
+            // Save state after transform is complete
+            const affectedObjects = selectedObject ? [selectedObject] : selectedObjects.length > 0 ? selectedObjects : null;
+            saveSceneState('transform', affectedObjects);
+        } else {
+            // Save state after duplication
+            if (selectedObject) {
+                saveSceneState('duplicate', [selectedObject]);
+            }
+        }
     }
 }
 );
@@ -3457,33 +3586,158 @@ transform.addEventListener("objectChange", () => {
 }
 );
 
-// ===== Undo =====
-const undoStack = [];
-function saveState() {
-    if (selectedObject) {
-        undoStack.push({
-            uuid: selectedObject.uuid,
-            pos: selectedObject.position.clone(),
-            rot: selectedObject.quaternion.clone(),
-            scale: selectedObject.scale.clone()
-        });
+// ===== Undo/Redo System =====
+const MAX_UNDO_HISTORY = 50;
+let undoStack = [];
+let redoStack = [];
+let isUndoRedoInProgress = false;
+
+// Check if code editor is focused
+function isCodeEditorFocused() {
+    if (!jsonEditor) return false;
+    // Check if CodeMirror view has focus
+    if (window.jsonEditorAPI && window.jsonEditorAPI.hasFocus) {
+        return window.jsonEditorAPI.hasFocus();
+    }
+    // Fallback: check if jsonEditor container or any child has focus
+    return document.activeElement && jsonEditor.contains(document.activeElement);
+}
+
+// Save complete scene state
+function saveSceneState(actionType = 'transform', affectedObjects = null) {
+    if (isUndoRedoInProgress) return;
+    
+    // Clear redo stack when new action is performed
+    if (redoStack.length > 0) {
+        redoStack = [];
+        updateUndoRedoButtons();
+    }
+
+    const state = {
+        type: actionType,
+        timestamp: Date.now(),
+        sceneJSON: generateSceneJSON(),
+        affectedObjects: affectedObjects ? affectedObjects.map(obj => ({
+            uuid: obj.uuid,
+            name: obj.name
+        })) : null
+    };
+
+    undoStack.push(state);
+    
+    // Limit stack size
+    if (undoStack.length > MAX_UNDO_HISTORY) {
+        undoStack.shift();
+    }
+
+    updateUndoRedoButtons();
+}
+
+// Undo function
+function undo() {
+    // If code editor is focused, use CodeMirror's undo
+    if (isCodeEditorFocused() && window.jsonEditorAPI && window.jsonEditorAPI.undo) {
+        window.jsonEditorAPI.undo();
+        updateUndoRedoButtons();
+        return;
+    }
+
+    if (undoStack.length === 0) return;
+
+    isUndoRedoInProgress = true;
+    
+    // Save current state to redo stack
+    const currentState = {
+        type: 'undo',
+        timestamp: Date.now(),
+        sceneJSON: generateSceneJSON()
+    };
+    redoStack.push(currentState);
+
+    // Get the last undo state
+    const stateToRestore = undoStack.pop();
+    
+    // Restore scene from JSON (skip state save to avoid infinite loop)
+    parseJSONAndUpdateScene(stateToRestore.sceneJSON, true).then(() => {
+        isUndoRedoInProgress = false;
+        updateUndoRedoButtons();
+    }).catch(error => {
+        console.error('Error during undo:', error);
+        isUndoRedoInProgress = false;
+        updateUndoRedoButtons();
+    });
+}
+
+// Redo function
+function redo() {
+    // If code editor is focused, use CodeMirror's redo
+    if (isCodeEditorFocused() && window.jsonEditorAPI && window.jsonEditorAPI.redo) {
+        window.jsonEditorAPI.redo();
+        updateUndoRedoButtons();
+        return;
+    }
+
+    if (redoStack.length === 0) return;
+
+    isUndoRedoInProgress = true;
+    
+    // Save current state to undo stack
+    const currentState = {
+        type: 'redo',
+        timestamp: Date.now(),
+        sceneJSON: generateSceneJSON()
+    };
+    undoStack.push(currentState);
+
+    // Get the last redo state
+    const stateToRestore = redoStack.pop();
+    
+    // Restore scene from JSON (skip state save to avoid infinite loop)
+    parseJSONAndUpdateScene(stateToRestore.sceneJSON, true).then(() => {
+        isUndoRedoInProgress = false;
+        updateUndoRedoButtons();
+    }).catch(error => {
+        console.error('Error during redo:', error);
+        isUndoRedoInProgress = false;
+        updateUndoRedoButtons();
+    });
+}
+
+// Update button states
+function updateUndoRedoButtons() {
+    if (btnUndo) {
+        let canUndo = false;
+        if (isCodeEditorFocused()) {
+            // CodeMirror always has undo available (it manages its own history)
+            canUndo = true;
+        } else {
+            canUndo = undoStack.length > 0;
+        }
+        btnUndo.disabled = !canUndo;
+        btnUndo.classList.toggle('opacity-50', !canUndo);
+        btnUndo.style.cursor = canUndo ? 'pointer' : 'not-allowed';
+    }
+    
+    if (btnRedo) {
+        let canRedo = false;
+        if (isCodeEditorFocused()) {
+            // CodeMirror always has redo available (it manages its own history)
+            canRedo = true;
+        } else {
+            canRedo = redoStack.length > 0;
+        }
+        btnRedo.disabled = !canRedo;
+        btnRedo.classList.toggle('opacity-50', !canRedo);
+        btnRedo.style.cursor = canRedo ? 'pointer' : 'not-allowed';
     }
 }
-function undo() {
-    if (!selectedObject || !undoStack.length)
-        return;
 
-    // Find the most recent state for the currently selected object
-    for (let i = undoStack.length - 1; i >= 0; i--) {
-        if (undoStack[i].uuid === selectedObject.uuid) {
-            const last = undoStack.splice(i, 1)[0];
-            selectedObject.position.copy(last.pos);
-            selectedObject.quaternion.copy(last.rot);
-            selectedObject.scale.copy(last.scale);
-            updateAllVisuals(selectedObject);
-            break;
-        }
-    }
+// Legacy saveState function for backward compatibility (now saves full scene)
+function saveState() {
+    if (isUndoRedoInProgress) return;
+    
+    const affectedObjects = selectedObject ? [selectedObject] : selectedObjects.length > 0 ? selectedObjects : null;
+    saveSceneState('transform', affectedObjects);
 }
 
 // ===== Render loop =====
@@ -3570,11 +3824,26 @@ const contextMenu = (function() {
 )();
 
 const contextActions = {
-    "Duplicate": () => duplicateSelectedObjects(),
-    "Dissolve Group": () => ungroupSelectedObject(),
-    "Detach from Group": () => detachSelectedFromGroup(),
-    "Reset Transform": () => selectedObjects.forEach(resetTransform),
-    "Drop to Floor": () => selectedObjects.forEach(dropToFloor),
+    "Duplicate": () => {
+        if (!checkUnsavedChangesBeforeEdit()) return;
+        duplicateSelectedObjects();
+    },
+    "Dissolve Group": () => {
+        if (!checkUnsavedChangesBeforeEdit()) return;
+        ungroupSelectedObject();
+    },
+    "Detach from Group": () => {
+        if (!checkUnsavedChangesBeforeEdit()) return;
+        detachSelectedFromGroup();
+    },
+    "Reset Transform": () => {
+        if (!checkUnsavedChangesBeforeEdit()) return;
+        selectedObjects.forEach(resetTransform);
+    },
+    "Drop to Floor": () => {
+        if (!checkUnsavedChangesBeforeEdit()) return;
+        selectedObjects.forEach(dropToFloor);
+    },
     "Select All": () => selectAllSidebar(),
     "Deselect All": () => deselectAllSidebar()
 };
@@ -3924,6 +4193,21 @@ let hasUnsavedChanges = false;
 let isProgrammaticUpdate = false;
 // Flag to ignore json-change events during programmatic updates
 
+// Check if applyChanges button is visible (unsaved changes exist)
+function hasUnsavedCodeChanges() {
+    return applyChanges && applyChanges.style.display !== 'none' && applyChanges.style.display !== '';
+}
+
+// Show modal and return true if user wants to proceed (after applying changes)
+function checkUnsavedChangesBeforeEdit() {
+    if (hasUnsavedCodeChanges()) {
+        const modal = new bootstrap.Modal(document.getElementById('unsavedChangesModal'));
+        modal.show();
+        return false; // Block the edit
+    }
+    return true; // Allow the edit
+}
+
 // Update JSON editor when scene changes
 function updateJSONEditorFromScene() {
     if (jsonEditor && !hasUnsavedChanges) {
@@ -3938,8 +4222,26 @@ function updateJSONEditorFromScene() {
     }
 }
 
+// Discard changes in code editor and restore original JSON
+function discardCodeEditorChanges() {
+    if (!jsonEditor || !originalJSON) {
+        return;
+    }
+    
+    isProgrammaticUpdate = true;
+    setJSONEditorText(originalJSON);
+    hasUnsavedChanges = false;
+    applyChanges.style.display = 'none';
+    
+    // Use setTimeout to ensure the json-change event has been processed
+    setTimeout( () => {
+        isProgrammaticUpdate = false;
+    }
+    , 0);
+}
+
 // Parse JSON and update scene
-async function parseJSONAndUpdateScene(jsonText) {
+async function parseJSONAndUpdateScene(jsonText, skipStateSave = false) {
     try {
         const data = JSON.parse(jsonText);
 
@@ -4090,6 +4392,11 @@ async function parseJSONAndUpdateScene(jsonText) {
         // Update JSON editor to reflect any changes (including canvas size changes)
         // This will also update originalJSON and hide the apply button
         updateJSONEditor();
+        
+        // Save state after applying changes from code editor (unless it's from undo/redo)
+        if (!skipStateSave && !isUndoRedoInProgress) {
+            saveSceneState('code-edit', null);
+        }
 
     } catch (error) {
         console.error('❌ Error parsing JSON:', error);
@@ -4696,15 +5003,79 @@ if (jsonEditor) {
     // Focus event - deselect all objects when JSON editor is focused
     jsonEditor.addEventListener('focus', () => {
         deselectAllSidebar();
+        updateUndoRedoButtons(); // Update buttons when code editor gets focus
+    }
+    );
+
+    // Blur event - update buttons when code editor loses focus
+    jsonEditor.addEventListener('blur', () => {
+        updateUndoRedoButtons(); // Update buttons when code editor loses focus
     }
     );
 
     // Apply changes button
     applyChanges.addEventListener('click', async () => {
         await parseJSONAndUpdateScene(getJSONEditorText());
+        // State is saved in parseJSONAndUpdateScene
     }
     );
+    
+    // Wire up modal's "Apply Changes" button
+    const applyChangesFromModal = document.getElementById('applyChangesFromModal');
+    if (applyChangesFromModal) {
+        applyChangesFromModal.addEventListener('click', async () => {
+            const modalElement = document.getElementById('unsavedChangesModal');
+            const modal = bootstrap.Modal.getInstance(modalElement);
+            
+            // Disable button during processing
+            applyChangesFromModal.disabled = true;
+            applyChangesFromModal.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i>Applying...';
+            
+            try {
+                // Apply changes
+                await parseJSONAndUpdateScene(getJSONEditorText());
+                // State is saved in parseJSONAndUpdateScene
+                
+                // Close modal after successful apply
+                if (modal) {
+                    modal.hide();
+                }
+            } catch (error) {
+                console.error('Error applying changes:', error);
+                alert('Error applying changes. Please check the console for details.');
+            } finally {
+                // Re-enable button
+                applyChangesFromModal.disabled = false;
+                applyChangesFromModal.innerHTML = '<i class="fa-solid fa-arrows-spin fa-spin me-2"></i>Apply Changes';
+            }
+        });
+    }
+    
+    // Wire up modal's "Discard Changes" button
+    const discardChangesFromModal = document.getElementById('discardChangesFromModal');
+    if (discardChangesFromModal) {
+        discardChangesFromModal.addEventListener('click', () => {
+            const modalElement = document.getElementById('unsavedChangesModal');
+            const modal = bootstrap.Modal.getInstance(modalElement);
+            
+            // Discard changes
+            discardCodeEditorChanges();
+            
+            // Close modal after discarding
+            if (modal) {
+                modal.hide();
+            }
+        });
+    }
 
     // Initial JSON update
 //    updateJSONEditorFromScene();
 }
+
+// Initialize undo/redo button states
+updateUndoRedoButtons();
+
+// Update button states periodically to handle code editor focus changes
+setInterval(() => {
+    updateUndoRedoButtons();
+}, 100);
