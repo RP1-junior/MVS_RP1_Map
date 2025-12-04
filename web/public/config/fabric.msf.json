@@ -5,6 +5,6 @@
       "require": "MVRP_Map",
       "connect": "secure=true;server=<PUBLIC_DOMAIN>:443;session=RP1",
       "bAuth":   false,
-      "RootUrl": ""
+      "RootUrl": "<PUBLIC_DOMAIN>"
    }
 }
