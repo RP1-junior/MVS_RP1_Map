@@ -1,186 +1,376 @@
 <!doctype html>
-<html>
-   <head>
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1">
-      <title>jrSceneMaker</title>
+<html data-bs-theme="dark">
 
-      <link rel="stylesheet" href="css/styles.css">
+<head>
+   <meta charset="utf-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1">
+   <title>jrSceneMaker</title>
 
-      <script type="text/javascript" src="js/vendor/jquery-3.3.1.js"></script>
-      <script type="text/javascript" src="js/vendor/cdn.socket.io_4.8.1_socket.io.min.js"></script>
+   <link rel="stylesheet" href="css/styles.css">
 
-      <script type="text/javascript" src="https://cdn2_server3.rp1.dev/js/mv/MVMF.js"></script>
-      <script type="text/javascript" src="https://cdn2_server3.rp1.dev/js/mv/MVSB.js"></script>
-      <script type="text/javascript" src="https://cdn2_server3.rp1.dev/js/mv/MVRest.js"></script>
-      <script type="text/javascript" src="https://cdn2_server3.rp1.dev/js/mv/MVXP.js"></script>
-      <script type="text/javascript" src="https://cdn2_server3.rp1.dev/js/mv/MVIO.js"></script>
-      <script type="text/javascript" src="https://cdn2_server3.rp1.dev/js/mv/MVRP.js"></script>
-      <script type="text/javascript" src="https://cdn2_server3.rp1.dev/js/mv/MVRP_Dev.js"></script>
-      <script type="text/javascript" src="https://cdn2_server3.rp1.dev/js/mv/MVRP_Fabric.js"></script>
-      <script type="text/javascript" src="https://cdn2_server3.rp1.dev/js/mv/MVRP_Map.js"></script>
+   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
 
-      <!-- App -->
-      <script src="js/rp1.js"></script>
+   <link rel="preconnect" href="https://fonts.googleapis.com">
+   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap" rel="stylesheet">
+   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css" integrity="sha512-2SwdPD6INVrV/lHTZbO2nodKhrnDdJK9/kg2XD1r9uGqPo1cUbujc+IYdlYdEErWNu69gVcYgdxlmVmzTWnetw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
-      <!-- Core Three.js -->
-      <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+   <script type="text/javascript" src="js/vendor/jquery-3.3.1.js"></script>
+   <script type="text/javascript" src="js/vendor/cdn.socket.io_4.8.1_socket.io.min.js"></script>
 
-      <!-- Controls & Loaders -->
-      <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-      <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TransformControls.js"></script>
-      <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-
-      <script type="text/javascript" class="data_asp">
-         const g_pRequire = MV.MVMF.Core.Require ('MVRP_Dev,MVRP_Map,MVRP_Fabric');
-         var g_pMap     = null;
-         
-         $(document).ready
-         (
-            function ()
-            {
-               g_pMap = new ExtractMap ($('body'), window.location.origin + '/config/fabric.msf.json', 70, 1);
-               //$('.data_asp').remove ();
-            }
-         );
-      </script>
-   </head>
-   <body>
-      <div id="ui">
-         <input type="file" id="file"><br>
-         <button id="translate">Translate (W)</button>
-         <button id="rotate">Rotate (E)</button>
-         <button id="scale">Scale (R)</button>
-         <button id="delete">Delete (Del)</button>
-         <button id="undo">Undo (Ctrl+Z)</button>
-         <button id="resetCamera">Reset Camera</button>
-         <br>
-         <label><input type="checkbox" id="snap"> Snap</label>
-         <input type="number" id="canvasSize" value="20" min="20" max="100"> Canvas Size<br>
-      </div>
-      <div id="sidebar">
-         <select class="jsPObject"></select>
-         <ul id="modelList"></ul>
-         <hr>
-         <strong>Properties</strong>
-         <pre id="properties"></pre>
-      </div>
-      <div id="codeBar">
-         <strong>Code Editor</strong>
-         <div id="jsonEditor"></div>
-         <div id="jsonButtons">
-            <button id="applyChanges" style="display: none;">Apply Changes</button>
-            <button id="exportJson">Publish</button>
-         </div>
-      </div>
-      <div id="helpOverlay">
-         <strong>Hotkeys</strong>
-         W – Move<br>
-         E – Rotate<br>
-         R – Scale<br>
-         Q – Detach gizmo<br>
-         Shift+Q – Re‑attach gizmo<br>
-         F – Frame selected<br>
-         Ctrl+Z – Undo<br>
-         Ctrl+D – Duplicate<br>
-         Alt+Drag – Duplicate while moving<br>
-         Space+Arrow Keys – Pan camera<br>
-         Dbl Click model – Focus it<br>
-         Double‑click empty – Reset to canvas<br>
-         H – Toggle this help
-      </div>
-
-      <script type="module">
-         import {EditorView, keymap, lineNumbers, highlightActiveLine, drawSelection} from 'https://esm.sh/@codemirror/view@6';
-         import {EditorState} from 'https://esm.sh/@codemirror/state@6';
-         import {defaultHighlightStyle, syntaxHighlighting, foldGutter, foldKeymap, bracketMatching} from 'https://esm.sh/@codemirror/language@6';
-         import {json, jsonParseLinter} from 'https://esm.sh/@codemirror/lang-json@6';
-         import {defaultKeymap, history, historyKeymap} from 'https://esm.sh/@codemirror/commands@6';
-         import {searchKeymap, highlightSelectionMatches} from 'https://esm.sh/@codemirror/search@6';
-         import {closeBrackets, closeBracketsKeymap} from 'https://esm.sh/@codemirror/autocomplete@6';
-         import {linter, lintGutter} from 'https://esm.sh/@codemirror/lint@6';
-         import {oneDark} from 'https://esm.sh/@codemirror/theme-one-dark@6';
-
-         const container = document.getElementById('jsonEditor');
-         let initialDoc = container?.dataset?.initial || container?.textContent || '';
-
-         // Clear any existing visible text to avoid duplicate rendering next to CodeMirror
-         if (container) container.textContent = '';
-
-         const updateListeners = [];
-
-         const view = new EditorView 
-         (
-            {
-               state: EditorState.create
-               (
-                  {
-                     doc: initialDoc,
-                     extensions: [
-                        EditorState.allowMultipleSelections.of(true),
-                        oneDark,
-                        lineNumbers(),
-                        foldGutter(),
-                        highlightActiveLine(),
-                        drawSelection(),
-                        bracketMatching(),
-                        closeBrackets(),
-                        highlightSelectionMatches(),
-                        lintGutter(),
-                        linter(jsonParseLinter()),
-                        history(),
-                        keymap.of([
-                           ...defaultKeymap,
-                           ...historyKeymap,
-                           ...searchKeymap,
-                           ...foldKeymap,
-                           ...closeBracketsKeymap
-                        ]),
-                        syntaxHighlighting(defaultHighlightStyle, {fallback: true}),
-                        json (),
-                        EditorView.updateListener.of
-                        (
-                           v => {
-                              if (v.docChanged) 
-                              {
-                                 const value = v.state.doc.toString();
-                                 container.dispatchEvent(new CustomEvent('json-change', {detail: {value}}));
-                              }
- 
-                              if (v.focusChanged && view.hasFocus) 
-                              {
-                                 container.dispatchEvent(new Event('focus'));
-                              }
-                           }
-                        )
-                     ]
-                  }
-               ),
-               parent: container
-            }
-         );
-
-         window.jsonEditorAPI = {
-            getValue () 
-            { 
-               return view.state.doc.toString(); 
-            },
-            setValue(text) 
-            {
-               const curLen = view.state.doc.length;
-               view.dispatch({changes: {from: 0, to: curLen, insert: text}});
-            },
-            focus () 
-            { 
-               view.focus(); 
-            }
-         };
-
-         // Clear the buffered initial data attribute once the editor is ready
-         if (container && container.dataset) delete container.dataset.initial;
-      </script>
-   </body>
+   <script type="text/javascript" src="https://cdn2_server3.rp1.dev/js/mv/MVMF.js"></script>
+   <script type="text/javascript" src="https://cdn2_server3.rp1.dev/js/mv/MVSB.js"></script>
+   <script type="text/javascript" src="https://cdn2_server3.rp1.dev/js/mv/MVRest.js"></script>
+   <script type="text/javascript" src="https://cdn2_server3.rp1.dev/js/mv/MVXP.js"></script>
+   <script type="text/javascript" src="https://cdn2_server3.rp1.dev/js/mv/MVIO.js"></script>
+   <script type="text/javascript" src="https://cdn2_server3.rp1.dev/js/mv/MVRP.js"></script>
+   <script type="text/javascript" src="https://cdn2_server3.rp1.dev/js/mv/MVRP_Dev.js"></script>
+   <script type="text/javascript" src="https://cdn2_server3.rp1.dev/js/mv/MVRP_Fabric.js"></script>
+   <script type="text/javascript" src="https://cdn2_server3.rp1.dev/js/mv/MVRP_Map.js"></script>
 
    <!-- App -->
-   <script src="js/main.js"></script>
+   <script src="js/rp1.js"></script>
+
+   <!-- Core Three.js -->
+   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+
+   <!-- Controls & Loaders -->
+   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TransformControls.js"></script>
+   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+
+   <script type="text/javascript" class="data_asp">
+      const g_pRequire = MV.MVMF.Core.Require('MVRP_Dev,MVRP_Map,MVRP_Fabric');
+      var g_pMap = null;
+
+      $(document).ready(
+         function() {
+            g_pMap = new ExtractMap($('body'), window.location.origin + '/config/fabric.msf.json', 70, 1);
+            //$('.data_asp').remove ();
+         }
+      );
+   </script>
+</head>
+
+<body>
+
+   <div class="position-absolute w-100 user-select-none pe-none z-1">
+      <nav class="main navbar navbar-expand py-1 pe-auto">
+         <div class="container-lg">
+            <ul class="navbar-nav gap-2 mb-lg-0 blur rounded-5">
+               <li class="nav-item dropdown">
+                  <a class="nav-link ps-3 dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                     <i class="fa-solid fa-cube d-none"></i> scn mkr
+                  </a>
+                  <ul class="dropdown-menu">
+                     <li><div class="dropdown-item py-2 pe-none"><input type="file" id="file" class="pe-auto"></div></li>
+                     <li><div class="dropdown-item mx-auto py-2 pe-none">
+                        <div class="form-check form-switch pe-auto">
+                           <input class="form-check-input" type="checkbox" role="switch" id="snap">
+                           <label class="form-check-label" for="snap">Snap Objects to Grid</label>
+                        </div>
+                     </div>
+                     </li>
+                     <li>
+                        <hr class="dropdown-divider">
+                     </li>
+                     <li>
+                        <div class="px-3 py-2 d-flex align-items-center w-100 gap-3">
+                           <label for="canvasSize" class="form-label w-100 m-0">Canvas&nbsp;Size</label>
+                           <input type="text" class="form-control" id="canvasSize" placeholder="20" value="20" style="width:5rem">
+                           <button type="submit" class="btn btn-outline-light">Set</button>
+                        </div>
+                     </li>
+                  </ul>
+               </li>
+               <li class="nav-item border-start my-1">
+               </li>
+               <li class="nav-item">
+                  <button class="nav-link" id="undo"><i class="fa-solid fa-rotate-left" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Undo (ctrl+z)"></i></button>
+               </li>
+               <li class="nav-item">
+                  <button class="nav-link" id="redo"><i class="fa-solid fa-rotate-right" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Redo (ctrl+y)"></i></button>
+               </li>
+               <li class="nav-item border-start my-1">
+               </li>
+               <li class="nav-item">
+                  <button class="nav-link" id="delete"><i class="fa-solid fa-trash" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Delete"></i></button>
+               </li>
+               <li class="nav-item">
+                  <button class="nav-link" id="resetCamera"><i class="fa-solid fa-camera" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Reset Camera"></i></button>
+               </li>
+               <li class="nav-item border-start my-1">
+               </li>
+               <li class="nav-item">
+                  <button class="nav-link" id="exportJson"><i class="fa-solid fa-file-export" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Export JSON"></i></button>
+               </li>
+               <li class="nav-item">
+                  <button class="nav-link" id="publishScene"><i class="fa-solid fa-floppy-disk" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Publish Scene"></i></button>
+               </li>
+            </ul>
+            <button class="btn btn-sm btn-secondary rounded-5" type="button" data-bs-toggle="offcanvas" data-bs-target="#codeEditorPanel" aria-controls="codeEditorPanel"  data-bs-toggle="tooltip" data-bs-placement="bottom" title="View Scene JSON" id="codeToggle"><i class="fa-solid fa-code"></i> Code Editor</button>
+         </div>
+      </nav>
+      <nav class="secondary navbar navbar-expand p-0 mt-3 mt-lg-0 pe-none d-none" id="objControls">
+         <ul class="navbar-nav transforms gap-1 mb-lg-0 rounded-5 blur mx-auto pe-auto bg-black bg-opacity-10">
+            <li class="nav-item">
+               <button class="nav-link p-3 ps-4" id="translate" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Move (W)"><i class="fa-solid fa-arrows-up-down-left-right fa-lg"></i></button>
+            </li>
+            <li class="nav-item border-start my-1">
+            </li>
+            <li class="nav-item">
+               <button class="nav-link p-3" id="rotate" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Rotate (E)"><i class="fa-solid fa-rotate fa-lg"></i></button>
+            </li>
+            <li class="nav-item border-start my-1">
+            </li>
+            <li class="nav-item">
+               <button class="nav-link p-3 pe-4" id="scale" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Scale (E)"><i class="fa-solid fa-expand fa-lg"></i></button>
+            </li>
+         </ul>
+      </nav>
+   </div>
+
+   <div id="sidebar" class="position-fixed mt-5 pt-2 ms-3 h-100">
+      <select class="form-select jsPObject mb-3" aria-label="Select a scene">
+      </select>
+
+      <div class="card mb-3 rounded-4 bg-dark bg-opacity-75 blur pe-none user-select-none" style="width: 18rem;">
+         <div class="card-body">
+            <h6 class="card-title">Models</h6>
+            <ul class="list-group list-group-flush rounded-3 pe-auto small" id="modelList">
+            </ul>
+         </div>
+      </div>
+
+      <div class="card mb-3 rounded-4 bg-dark bg-opacity-75 blur pe-none user-select-none" style="width: 18rem;" id="propertiesPanel">
+         <div class="card-body">
+            <h6 class="card-title pe-none user-select-none">Properties</h6>
+            <p class="card-text small" id="properties"></p>
+            <div class="badge text-bg-secondary" id="triBadge"><i class="fa-solid fa-play fa-rotate-270 fa-sm"></i> Triangles: <span id="triCount"></span></div>
+            <div class="badge text-bg-secondary" id="texBadge"><i class="fa-solid fa-image fa-sm"></i> Textures: <span id="texCount"></span></div>
+         </div>
+      </div>
+
+      <div class="card rounded-4 bg-dark bg-opacity-75 blur pe-none user-select-none" style="width: 18rem;" id="helpOverlay">
+         <div class="card-body small">
+            <strong>Hotkeys</strong><br>
+            W – Move<br>
+            E – Rotate<br>
+            R – Scale<br>
+            Q – Detach gizmo<br>
+            Shift+Q – Re‑attach gizmo<br>
+            F – Frame selected<br>
+            Ctrl+Z – Undo<br>
+            Click model – Focus it<br>
+            Double‑click empty – Reset to canvas<br>
+            H – Toggle this help
+         </div>
+      </div>
+
+   </div>
+
+   <div class="offcanvas offcanvas-end mt-5 rounded-start-4 border-top bg-dark bg-opacity-75 blur" data-bs-scroll="true" data-bs-backdrop="false" tabindex="-1" id="codeEditorPanel" aria-labelledby="codeEditorPanel">
+      <div class="offcanvas-resize-handle" id="codeEditorResizeHandle"></div>
+      <div class="offcanvas-header d-flex justify-content-between pb-0">
+         <label for="codeEditor" class="form-label">
+            <h5 class="offcanvas-title m-0 p-0 user-select-none">Code Editor</h5>
+         </label>
+         <button type="button" class="btn-close p-1 rounded-2" data-bs-dismiss="offcanvas" aria-label="Close"><i class="fa-solid fa-arrow-right-from-bracket fa-lg"></i></button>
+      </div>
+      <div class="offcanvas-body pt-2 pb-1" id="code">
+         <div id="jsonEditor" class="h-100"></div>
+      </div>
+      <div class="offcanvas-footer p-3 pb-4 d-flex justify-content-between" id="jsonButtons">
+         <button type="button" class="btn btn-sm btn-primary fa-beat w-100" style="--fa-beat-scale: 1.025; --fa-animation-duration: 2s; display: none;" id="applyChanges"><i class="fa-solid fa-arrows-spin fa-spin"></i> Apply Changes</button>
+      </div>
+   </div>
+
+
+
+   <script type="module">
+      import {
+         EditorView,
+         keymap,
+         lineNumbers,
+         highlightActiveLine,
+         drawSelection
+      } from 'https://esm.sh/@codemirror/view@6';
+      import {
+         EditorState
+      } from 'https://esm.sh/@codemirror/state@6';
+      import {
+         defaultHighlightStyle,
+         syntaxHighlighting,
+         foldGutter,
+         foldKeymap,
+         bracketMatching
+      } from 'https://esm.sh/@codemirror/language@6';
+      import {
+         json,
+         jsonParseLinter
+      } from 'https://esm.sh/@codemirror/lang-json@6';
+      import {
+         defaultKeymap,
+         history,
+         historyKeymap
+      } from 'https://esm.sh/@codemirror/commands@6';
+      import {
+         searchKeymap,
+         highlightSelectionMatches
+      } from 'https://esm.sh/@codemirror/search@6';
+      import {
+         closeBrackets,
+         closeBracketsKeymap
+      } from 'https://esm.sh/@codemirror/autocomplete@6';
+      import {
+         linter,
+         lintGutter
+      } from 'https://esm.sh/@codemirror/lint@6';
+      import {
+         oneDark
+      } from 'https://esm.sh/@codemirror/theme-one-dark@6';
+
+      const container = document.getElementById('jsonEditor');
+      let initialDoc = container?.dataset?.initial || container?.textContent || '';
+
+      // Clear any existing visible text to avoid duplicate rendering next to CodeMirror
+      if (container) container.textContent = '';
+
+      const updateListeners = [];
+
+      const view = new EditorView({
+         state: EditorState.create({
+            doc: initialDoc,
+            extensions: [
+               EditorState.allowMultipleSelections.of(true),
+               oneDark,
+               lineNumbers(),
+               foldGutter(),
+               highlightActiveLine(),
+               drawSelection(),
+               bracketMatching(),
+               closeBrackets(),
+               highlightSelectionMatches(),
+               lintGutter(),
+               linter(jsonParseLinter()),
+               history(),
+               keymap.of([
+                  ...defaultKeymap,
+                  ...historyKeymap,
+                  ...searchKeymap,
+                  ...foldKeymap,
+                  ...closeBracketsKeymap
+               ]),
+               syntaxHighlighting(defaultHighlightStyle, {
+                  fallback: true
+               }),
+               json(),
+               EditorView.updateListener.of(
+                  v => {
+                     if (v.docChanged) {
+                        const value = v.state.doc.toString();
+                        container.dispatchEvent(new CustomEvent('json-change', {
+                           detail: {
+                              value
+                           }
+                        }));
+                     }
+
+                     if (v.focusChanged && view.hasFocus) {
+                        container.dispatchEvent(new Event('focus'));
+                     }
+                  }
+               )
+            ]
+         }),
+         parent: container
+      });
+
+      window.jsonEditorAPI = {
+         getValue() {
+            return view.state.doc.toString();
+         },
+         setValue(text) {
+            const curLen = view.state.doc.length;
+            view.dispatch({
+               changes: {
+                  from: 0,
+                  to: curLen,
+                  insert: text
+               }
+            });
+         },
+         focus() {
+            view.focus();
+         }
+      };
+
+      // Clear the buffered initial data attribute once the editor is ready
+      if (container && container.dataset) delete container.dataset.initial;
+   </script>
+</body>
+
+<!-- App -->
+<script src="js/main.js"></script>
+
+<!-- Enable BS Tooltips -->
+<script type="text/javascript">
+const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
+const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl))
+
+// Fade #codeToggle when codeEditorPanel is visible
+const codeEditorPanel = document.getElementById('codeEditorPanel');
+const codeToggle = document.getElementById('codeToggle');
+const codeEditorResizeHandle = document.getElementById('codeEditorResizeHandle');
+
+if (codeEditorPanel && codeToggle) {
+   codeEditorPanel.addEventListener('shown.bs.offcanvas', function () {
+      codeToggle.classList.add('opacity-0');
+      codeToggle.style.pointerEvents = 'none';
+   });
+
+   codeEditorPanel.addEventListener('hidden.bs.offcanvas', function () {
+      codeToggle.classList.remove('opacity-0');
+      codeToggle.style.pointerEvents = '';
+   });
+}
+
+// Resize functionality for code editor panel
+if (codeEditorPanel && codeEditorResizeHandle) {
+   let isResizing = false;
+   let startX = 0;
+   let startWidth = 0;
+
+   codeEditorResizeHandle.addEventListener('mousedown', function(e) {
+      if (!codeEditorPanel.classList.contains('show')) return;
+
+      isResizing = true;
+      startX = e.clientX;
+      startWidth = codeEditorPanel.offsetWidth;
+      document.body.style.cursor = 'ew-resize';
+      document.body.style.userSelect = 'none';
+      e.preventDefault();
+   });
+
+   document.addEventListener('mousemove', function(e) {
+      if (!isResizing) return;
+
+      const deltaX = startX - e.clientX; // Negative because we're dragging left
+      const newWidth = Math.max(320, Math.min(window.innerWidth * 0.95, startWidth + deltaX));
+
+      codeEditorPanel.style.width = newWidth + 'px';
+      codeEditorPanel.style.setProperty('--bs-offcanvas-width', newWidth + 'px');
+   });
+
+   document.addEventListener('mouseup', function() {
+      if (isResizing) {
+         isResizing = false;
+         document.body.style.cursor = '';
+         document.body.style.userSelect = '';
+      }
+   });
+}
+</script>
+
 </html>

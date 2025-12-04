@@ -256,12 +256,15 @@ async function loadModelFromReference(sReference, boundingBox=null, scale=null, 
 }
 const modelList = document.getElementById("modelList");
 const propertiesPanel = document.getElementById("properties");
+const triCountElement = document.getElementById("triCount");
+const texCountElement = document.getElementById("texCount");
 const snapCheckbox = document.getElementById("snap");
 const canvasSizeInput = document.getElementById("canvasSize");
 const btnTranslate = document.getElementById("translate");
 const btnRotate = document.getElementById("rotate");
 const btnScale = document.getElementById("scale");
 const btnDelete = document.getElementById("delete");
+const objControls = document.getElementById("objControls");
 const btnUndo = document.getElementById("undo");
 const btnResetCamera = document.getElementById("resetCamera");
 const jsonEditor = document.getElementById("jsonEditor");
@@ -779,33 +782,140 @@ function updateModelProperties(model) {
     };
 }
 
+function aggregateTriangleCount(objects) {
+    let totalTriangles = 0;
+    objects.forEach(obj => {
+        if (obj && obj.userData?.properties) {
+            totalTriangles += obj.userData.properties.triangles || 0;
+        }
+    });
+    return totalTriangles;
+}
+
+function aggregateTextureInfo(objects) {
+    const aggregated = {
+        totalTextures: 0,
+        maxResolution: {
+            width: 0,
+            height: 0
+        },
+        minResolution: {
+            width: Infinity,
+            height: Infinity
+        }
+    };
+
+    objects.forEach(obj => {
+        if (obj && obj.userData?.properties && obj.userData.properties.textures) {
+            const texInfo = obj.userData.properties.textures;
+            if (texInfo.totalTextures > 0) {
+                aggregated.totalTextures += texInfo.totalTextures;
+
+                // Update max resolution
+                if (texInfo.maxResolution.width > aggregated.maxResolution.width || texInfo.maxResolution.height > aggregated.maxResolution.height) {
+                    aggregated.maxResolution.width = Math.max(aggregated.maxResolution.width, texInfo.maxResolution.width);
+                    aggregated.maxResolution.height = Math.max(aggregated.maxResolution.height, texInfo.maxResolution.height);
+                }
+
+                // Update min resolution
+                if (texInfo.minResolution.width < aggregated.minResolution.width || texInfo.minResolution.height < aggregated.minResolution.height) {
+                    aggregated.minResolution.width = Math.min(aggregated.minResolution.width, texInfo.minResolution.width);
+                    aggregated.minResolution.height = Math.min(aggregated.minResolution.height, texInfo.minResolution.height);
+                }
+            }
+        }
+    });
+
+    // Reset min resolution if no textures found
+    if (aggregated.totalTextures === 0) {
+        aggregated.minResolution = {
+            width: 0,
+            height: 0
+        };
+    }
+
+    return aggregated;
+}
+
 function updatePropertiesPanel(model) {
-    if (!model || !model.userData.properties) {
+    // Filter out canvas root from selected objects for aggregation
+    const validSelectedObjects = selectedObjects.filter(obj => obj && obj.userData?.properties && !obj.userData?.isCanvasRoot);
+    
+    // Use aggregated data if multiple objects selected, otherwise use single model
+    let totalTriangles = 0;
+    let aggregatedTextureInfo = null;
+    
+    if (validSelectedObjects.length > 1) {
+        // Multiple objects selected - aggregate data
+        totalTriangles = aggregateTriangleCount(validSelectedObjects);
+        aggregatedTextureInfo = aggregateTextureInfo(validSelectedObjects);
+    } else if (validSelectedObjects.length === 1) {
+        // Single valid object selected - use its data
+        const p = validSelectedObjects[0].userData.properties;
+        totalTriangles = p.triangles || 0;
+        aggregatedTextureInfo = p.textures || null;
+    } else if (model && model.userData?.properties) {
+        // Fallback to model parameter if provided (for backward compatibility)
+        const p = model.userData.properties;
+        totalTriangles = p.triangles || 0;
+        aggregatedTextureInfo = p.textures || null;
+    }
+
+    // Update triangle count in #triCount
+    if (triCountElement) {
+        triCountElement.textContent = totalTriangles.toLocaleString();
+    }
+
+    // Calculate texture information for #texCount
+    let textureInfoText = "None";
+    if (aggregatedTextureInfo && aggregatedTextureInfo.totalTextures > 0) {
+        if (aggregatedTextureInfo.maxResolution.width === aggregatedTextureInfo.minResolution.width && 
+            aggregatedTextureInfo.minResolution.width > 0) {
+            // All textures same resolution
+            textureInfoText = `${aggregatedTextureInfo.totalTextures} @ ${aggregatedTextureInfo.maxResolution.width}x${aggregatedTextureInfo.maxResolution.height}`;
+        } else if (aggregatedTextureInfo.minResolution.width > 0) {
+            // Mixed resolutions
+            textureInfoText = `${aggregatedTextureInfo.totalTextures} (${aggregatedTextureInfo.minResolution.width}x${aggregatedTextureInfo.minResolution.height} - ${aggregatedTextureInfo.maxResolution.width}x${aggregatedTextureInfo.maxResolution.height})`;
+        }
+    }
+
+    // Update texture info in #texCount
+    if (texCountElement) {
+        texCountElement.textContent = textureInfoText;
+    }
+
+    // Update properties panel text (only show for single selection)
+    if (!model || !model.userData?.properties) {
         propertiesPanel.textContent = "";
         return;
     }
+    
     const p = model.userData.properties;
-    let propertiesText = `Position: (${p.pos.x.toFixed(2)}, ${p.pos.y.toFixed(2)}, ${p.pos.z.toFixed(2)})\n` + `Rotation: (${p.rot.x.toFixed(4)}, ${p.rot.y.toFixed(4)}, ${p.rot.z.toFixed(4)}, ${p.rot.w.toFixed(4)})\n` + `Scale: (${p.scl.x.toFixed(2)}, ${p.scl.y.toFixed(2)}, ${p.scl.z.toFixed(2)})\n` + `Bounds: (${p.size.x.toFixed(2)}, ${p.size.y.toFixed(2)}, ${p.size.z.toFixed(2)})\n` + `Triangles: ${p.triangles.toLocaleString()}`;
-
-    // Add concise texture information
-    if (p.textures && p.textures.totalTextures > 0) {
-        if (p.textures.maxResolution.width === p.textures.minResolution.width) {
-            // All textures same resolution
-            propertiesText += `\nTextures: ${p.textures.totalTextures} @ ${p.textures.maxResolution.width}x${p.textures.maxResolution.height}`;
-        } else {
-            // Mixed resolutions
-            propertiesText += `\nTextures: ${p.textures.totalTextures} (${p.textures.minResolution.width}x${p.textures.minResolution.height} - ${p.textures.maxResolution.width}x${p.textures.maxResolution.height})`;
-        }
-    } else {
-        propertiesText += `\nTextures: None`;
-    }
-
+    let propertiesText = `Position: (${p.pos.x.toFixed(2)}, ${p.pos.y.toFixed(2)}, ${p.pos.z.toFixed(2)})\n` + `Rotation: (${p.rot.x.toFixed(4)}, ${p.rot.y.toFixed(4)}, ${p.rot.z.toFixed(4)}, ${p.rot.w.toFixed(4)})\n` + `Scale: (${p.scl.x.toFixed(2)}, ${p.scl.y.toFixed(2)}, ${p.scl.z.toFixed(2)})\n` + `Bounds: (${p.size.x.toFixed(2)}, ${p.size.y.toFixed(2)}, ${p.size.z.toFixed(2)})`;
     propertiesPanel.textContent = propertiesText;
 }
 
 function updateTransformButtonStates() {
     const editingAllowed = isEditingAllowed();
     const buttons = [btnTranslate, btnRotate, btnScale];
+
+    // Show/hide objControls based on selection
+    if (objControls) {
+        if (selectedObjects.length > 0) {
+            objControls.classList.remove('d-none');
+        } else {
+            objControls.classList.add('d-none');
+        }
+    }
+
+    // Show/hide #properties text based on editing allowed
+    if (propertiesPanel) {
+        if (editingAllowed) {
+            propertiesPanel.style.display = '';
+        } else {
+            propertiesPanel.style.display = 'none';
+        }
+    }
 
     buttons.forEach(btn => {
         if (editingAllowed) {
@@ -819,6 +929,9 @@ function updateTransformButtonStates() {
         }
     }
     );
+
+    // Update active state of buttons based on current transform mode
+    updateTransformButtonActiveState();
 
     // Handle delete button - disable if only Object Root is selected
     const deleteAllowed = selectedObjects.length > 0 && !(selectedObjects.length === 1 && selectedObjects[0].userData?.isCanvasRoot);
@@ -835,9 +948,30 @@ function updateTransformButtonStates() {
     // Detach transform gizmo if editing is not allowed
     if (!editingAllowed) {
         transform.detach();
+        updateTransformButtonActiveState();
     } else if (selectedObject) {
         // Reattach to the selected object if editing is allowed
         transform.attach(selectedObject);
+        updateTransformButtonActiveState();
+    }
+}
+
+function updateTransformButtonActiveState() {
+    // Remove active class from all buttons
+    btnTranslate.classList.remove('active');
+    btnRotate.classList.remove('active');
+    btnScale.classList.remove('active');
+
+    // Add active class to the button matching current transform mode
+    if (transform && transform.visible) {
+        const mode = transform.getMode();
+        if (mode === 'translate') {
+            btnTranslate.classList.add('active');
+        } else if (mode === 'rotate') {
+            btnRotate.classList.add('active');
+        } else if (mode === 'scale') {
+            btnScale.classList.add('active');
+        }
     }
 }
 
@@ -3018,23 +3152,31 @@ window.addEventListener("keydown", e => {
 
     switch (key) {
     case "w":
-        if (isEditingAllowed())
+        if (isEditingAllowed()) {
             transform.setMode("translate");
+            updateTransformButtonActiveState();
+        }
         break;
     case "e":
-        if (isEditingAllowed())
+        if (isEditingAllowed()) {
             transform.setMode("rotate");
+            updateTransformButtonActiveState();
+        }
         break;
     case "r":
-        if (isEditingAllowed())
+        if (isEditingAllowed()) {
             transform.setMode("scale");
+            updateTransformButtonActiveState();
+        }
         break;
     case "q":
         if (e.shiftKey) {
             if (selectedObject)
                 transform.attach(selectedObject);
-        } else
+        } else {
             transform.detach();
+            updateTransformButtonActiveState();
+        }
         break;
     case "f":
         if (selectedObject)
@@ -3127,18 +3269,24 @@ window.addEventListener("keyup", e => {
 
 // ===== Fix #ui buttons =====
 btnTranslate.onclick = () => {
-    if (isEditingAllowed())
+    if (isEditingAllowed()) {
         transform.setMode("translate");
+        updateTransformButtonActiveState();
+    }
 }
 ;
 btnRotate.onclick = () => {
-    if (isEditingAllowed())
+    if (isEditingAllowed()) {
         transform.setMode("rotate");
+        updateTransformButtonActiveState();
+    }
 }
 ;
 btnScale.onclick = () => {
-    if (isEditingAllowed())
+    if (isEditingAllowed()) {
         transform.setMode("scale");
+        updateTransformButtonActiveState();
+    }
 }
 ;
 btnDelete.onclick = () => {

@@ -1,94 +1,35 @@
-body {
-  margin: 0;
-  overflow: hidden;
-  background: #202020;
-  font-family: sans-serif;
-  color: white;
+@media (min-width: 992px) { /* For large screens and up */
+  .offcanvas {
+    --bs-offcanvas-width: min(95vw, 480px);
+  }
 }
 
-#ui {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  z-index: 10;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  background: rgba(0, 0, 0, 0.6);
-  padding: 6px;
-  border-radius: 4px;
-  user-select: none;
+.btn{border-radius:5rem;}
+
+body, .dropdown-item{
+  font-family: "Outfit", sans-serif !important;
+  font-optical-sizing: auto;
+  font-weight: 200;
+  font-style: normal;
 }
 
-#ui button,
-#ui input[type="file"],
-#ui label {
-  font-size: 13px;
-  color: white;
+.blur{
+  backdrop-filter:blur(1rem);
 }
 
-#ui button {
-  background: #333;
-  border: 1px solid #555;
-  border-radius: 3px;
-  padding: 4px 8px;
-  cursor: pointer;
+#helpOverlay{
+  display: none;
 }
 
-#ui button:hover {
-  background: #555;
-}
-
-#ui button:disabled {
-  background: #222;
-  border-color: #333;
-  color: #666;
-  cursor: not-allowed;
-}
-
-#ui button:disabled:hover {
-  background: #222;
-}
-
-#sidebar {
-  position: absolute;
-  top: 80px;
-  left: 10px;
-  z-index: 10;
-  width: 220px;
-  max-height: 70%;
-  overflow: auto;
-  background: rgba(0, 0, 0, 0.6);
-  padding: 6px;
-  border-radius: 4px;
-  user-select: none;
-}
-
-#codeBar {
-  position: absolute;
-  top: 80px;
-  right: 10px;
-  z-index: 10;
-  width: 300px;
-  max-height: 100%;
-  background: rgba(0, 0, 0, 0.6);
-  padding: 6px;
-  border-radius: 4px;
-  display: flex;
-  flex-direction: column;
-}
-
-#codeBar strong {
-  color: white;
-  font-size: 13px;
-  margin-bottom: 8px;
-  display: block;
+.btn-close{
+  background-image:none !important;
+  padding: .25rem 1rem .75rem .5rem !important;
+  margin: 0rem !important;
 }
 
 #jsonEditor {
   flex: 1;
-  max-height: 75vh;
-  background: #1a1a1a;
+  height: 100%;
   color: #ffffff;
   border: 1px solid #555;
   border-radius: 3px;
@@ -96,106 +37,44 @@ body {
   font-size: 11px;
   line-height: 1.4;
   resize: vertical;
-  margin-bottom: 8px;
   white-space: pre;
   overflow: auto;
 }
 
-#jsonEditor:focus {
-  outline: none;
-  border-color: #99ccff;
-}
-
-#jsonButtons {
-  display: flex;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-#applyChanges {
-  background: #4CAF50;
-  border: 1px solid #45a049;
-  border-radius: 3px;
-  padding: 6px 12px;
-  cursor: pointer;
-  color: white;
-  font-size: 12px;
-  flex: 1;
-}
-
-#applyChanges:hover {
-  background: #45a049;
-}
-
-#exportJson {
-  background: #333;
-  border: 1px solid #555;
-  border-radius: 3px;
-  padding: 6px 12px;
-  cursor: pointer;
-  color: white;
-  font-size: 12px;
-  flex: 1;
-}
-
-#exportJson:hover {
-  background: #555;
+.cm-editor{
+   height: 100%;
+   background: #22222290;
 }
 
 #modelList {
   list-style: none;
   padding: 0;
-  margin: 6px 0 0 0;
+  margin: 0px 0 0 0;
 }
 
 #modelList li {
   cursor: pointer;
-  padding: 4px 6px;
   border-radius: 3px;
-}
-
-#modelList li:hover {
-  background: #444;
 }
 
 #properties {
   font-size: 12px;
   white-space: pre-wrap;
-  margin-top: 6px;
 }
 
-#helpOverlay {
-  position: absolute;
-  bottom: 10px;
-  right: 10px;
-  z-index: 20;
-  background: rgba(0, 0, 0, 0.7);
-  color: white;
-  font-size: 12px;
-  line-height: 1.4;
-  padding: 8px 10px;
-  border-radius: 4px;
-  max-width: 220px;
-  display: none;
-}
-
-#helpOverlay strong {
-  display: block;
-  margin-bottom: 4px;
-  font-size: 13px;
-}
+#modelList li.selected { background: #444; }
 
 #contextMenu {
   position: absolute;
   display: none;
-  background: #222;
+  background: #11111190;
   border: 1px solid #555;
+  border-radius: .5rem;
   padding: 4px;
   list-style: none;
   z-index: 1000;
+  backdrop-filter:blur(1rem);
 }
-
-#modelList li.selected { background: #444; }
 
 /* Caret (disclosure) for groups */
 .caret {
@@ -242,6 +121,36 @@ body {
 
 #modelList li[draggable="true"]:active {
   cursor: grabbing;
+}
+
+#codeToggle {
+  transition: opacity 0.15s ease-in-out;
+}
+
+/* Resize handle for code editor panel */
+.offcanvas-resize-handle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  cursor: ew-resize;
+  z-index: 1056;
+  background: transparent;
+  transition: background 0.2s ease;
+  display: none;
+}
+
+.offcanvas.show .offcanvas-resize-handle {
+  display: block;
+}
+
+.offcanvas-resize-handle:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.offcanvas-resize-handle:active {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 /* Multi-select drag feedback */
