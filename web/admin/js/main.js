@@ -256,6 +256,7 @@ async function loadModelFromReference(sReference, boundingBox=null, scale=null, 
 }
 const modelList = document.getElementById("modelList");
 const propertiesPanel = document.getElementById("properties");
+const propertiesPanelCard = document.getElementById("propertiesPanel");
 const triCountElement = document.getElementById("triCount");
 const texCountElement = document.getElementById("texCount");
 const snapCheckbox = document.getElementById("snap");
@@ -887,6 +888,15 @@ function updatePropertiesPanel(model) {
     }
 
     // Update properties panel text (only show for single selection)
+    // Hide if multiple objects are selected (even if in same group)
+    if (validSelectedObjects.length > 1) {
+        if (propertiesPanel) {
+            propertiesPanel.textContent = "";
+        }
+        return;
+    }
+    
+    // Show properties for single object or group
     if (!model || !model.userData?.properties) {
         propertiesPanel.textContent = "";
         return;
@@ -910,12 +920,12 @@ function updateTransformButtonStates() {
         }
     }
 
-    // Show/hide #properties text based on editing allowed
-    if (propertiesPanel) {
-        if (editingAllowed) {
-            propertiesPanel.style.display = '';
+    // Show/hide properties panel card based on selection
+    if (propertiesPanelCard) {
+        if (selectedObjects.length > 0) {
+            propertiesPanelCard.style.display = '';
         } else {
-            propertiesPanel.style.display = 'none';
+            propertiesPanelCard.style.display = 'none';
         }
     }
 
@@ -5074,6 +5084,9 @@ if (jsonEditor) {
 
 // Initialize undo/redo button states
 updateUndoRedoButtons();
+
+// Initialize properties panel visibility (hidden initially since no objects selected)
+updateTransformButtonStates();
 
 // Update button states periodically to handle code editor focus changes
 setInterval(() => {
