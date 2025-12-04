@@ -8,7 +8,7 @@ Deploy a Metaverse Server.
 
 - Node.js (v14 or higher recommended)
 - MySQL database server
-- Access to RP1 Developer Center (RP1 Developer Account + Company Name)
+- Access to RP1 Developer Center (RP1 Developer Account + Company ID)
 
 ### Installation
 
@@ -18,9 +18,9 @@ Deploy a Metaverse Server.
    ```
 
 2. Configure environment variables:
-   
+
    Create a `.env` file or set the following environment variables:
-   
+
    - `PORT` - Server port number
    - `MYSQLHOST` - MySQL database host
    - `MYSQLPORT` - MySQL database port
@@ -56,7 +56,7 @@ The server will automatically initialize the database on first run. It will:
 
 1. Open `web/public/config/fabric.msf.json`
 2. Find the `namespace` field in the `map` object
-3. Replace `mycompanyname` with your RP1 Developer Center Company name (in lowercase)
+3. Replace `mycompanyname` with your RP1 Developer Center Company ID (in lowercase)
 
 Example:
 ```json
@@ -68,7 +68,7 @@ Example:
 }
 ```
 
-**Note:** The company name must match your RP1 Developer Center Company name exactly (must be lowercase).
+**Note:** The company name must match your RP1 Developer Center Company ID exactly (must be lowercase).
 
 ## Project Structure
 
@@ -102,4 +102,3 @@ Use this URL in the RP1 Developer Center to attach your Fabric to RP1.
 ## License
 
 ISC
-
