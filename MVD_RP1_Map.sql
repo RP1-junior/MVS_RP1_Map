@@ -1947,9 +1947,11 @@ CREATE PROCEDURE call_RMPObject_Event_RMPObject_Close
 (
    IN    twRMPObjectIx                 BIGINT,
    IN    twRMPObjectIx_Close           BIGINT,
-   OUT   bError                        INT
+   OUT   bError                        INT,
+   IN    bReparent                     TINYINT UNSIGNED
 )
 BEGIN
+
        DECLARE SBO_CLASS_RMPOBJECT                        INT DEFAULT 73;
        DECLARE SBA_SUBSCRIBE_REFRESH_EVENT_EX_FLAG_CLOSE  INT DEFAULT 0x02;
 
@@ -1958,10 +1960,13 @@ BEGIN
           CALL call_RMPObject_Event (twRMPObjectIx, twEventIz, bError);
             IF bError = 0
           THEN
-                 DELETE FROM RMPObject                                        -- we actually want to delete the entire tree - all the way down to the pobject!
-                  WHERE ObjectHead_Self_twObjectIx = twRMPObjectIx_Close;
-
-                    SET bError = IF (ROW_COUNT () = 1, 0, 1);
+                     IF bReparent = 0
+                   THEN
+                          DELETE FROM RMPObject                                        -- we actually want to delete the entire tree - all the way down to the pobject!
+                           WHERE ObjectHead_Self_twObjectIx = twRMPObjectIx_Close;
+         
+                             SET bError = IF (ROW_COUNT () = 1, 0, 1);
+                 END IF ;
 
                      IF bError = 0
                    THEN
@@ -1982,7 +1987,7 @@ BEGIN
 
                                  '{ }';
 
-                               SET bError = IF (ROW_COUNT () = 1, 0, 1);
+                             SET bError = IF (ROW_COUNT () = 1, 0, 1);
                  END IF ;
         END IF ;
 END$$
@@ -2026,9 +2031,11 @@ CREATE PROCEDURE call_RMPObject_Event_RMPObject_Open
    IN    Bound_dY                      DOUBLE,
    IN    Bound_dZ                      DOUBLE,
    OUT   twRMPObjectIx_Open            BIGINT,
-   OUT   bError                        INT
+   OUT   bError                        INT,
+   IN    bReparent                     TINYINT UNSIGNED
 )
 BEGIN
+
        DECLARE SBO_CLASS_RMPOBJECT                        INT DEFAULT 73;
        DECLARE SBA_SUBSCRIBE_REFRESH_EVENT_EX_FLAG_OPEN   INT DEFAULT 0x01;
 
@@ -2037,16 +2044,19 @@ BEGIN
           CALL call_RMPObject_Event (twRMPObjectIx, twEventIz, bError);
             IF bError = 0
           THEN
-                 INSERT INTO RMPObject
-                        (ObjectHead_Parent_wClass, ObjectHead_Parent_twObjectIx, ObjectHead_Self_wClass, ObjectHead_twEventIz, ObjectHead_wFlags, Name_wsRMPObjectId, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ)
-                 VALUES (SBO_CLASS_RMPOBJECT,      twRMPObjectIx,                SBO_CLASS_RMPOBJECT,    0,                    32,                Name_wsRMPObjectId, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ);
+                     IF bReparent = 0
+                   THEN
+                          INSERT INTO RMPObject
+                                 (ObjectHead_Parent_wClass, ObjectHead_Parent_twObjectIx, ObjectHead_Self_wClass, ObjectHead_twEventIz, ObjectHead_wFlags, Name_wsRMPObjectId, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ)
+                          VALUES (SBO_CLASS_RMPOBJECT,      twRMPObjectIx,                SBO_CLASS_RMPOBJECT,    0,                    32,                Name_wsRMPObjectId, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ);
+         
+                             SET bError = IF (ROW_COUNT () = 1, 0, 1);
 
-                    SET bError = IF (ROW_COUNT () = 1, 0, 1);
+                             SET twRMPObjectIx_Open = LAST_INSERT_ID ();
+                 END IF ;
 
                      IF bError = 0
                    THEN
-                             SET twRMPObjectIx_Open = LAST_INSERT_ID ();
-
                           INSERT INTO Event
                                  (sType, Self_wClass, Self_twObjectIx, Child_wClass, Child_twObjectIx, wFlags, twEventIz, sJSON_Object, sJSON_Child, sJSON_Change)
                           SELECT 'RMPOBJECT_OPEN',
@@ -2350,6 +2360,10 @@ BEGIN
 
                   ', "twRMPObjectIx": ', p.ObjectHead_Self_twObjectIx,      -- is this necessary
 
+                  ', "pName": ',         Format_Name_P
+                                         (
+                                            p.Name_wsRMPObjectId
+                                         ),
                   ', "pType": ',         Format_Type_P
                                          (
                                             p.Type_bType,
@@ -2420,10 +2434,10 @@ CREATE PROCEDURE call_RMPObject_Validate
 BEGIN
        DECLARE nCount INT;
 
-        SELECT ObjectHead_Parent_wClass, ObjectHead_Parent_twObjectIx
-          INTO ObjectHead_Parent_wClass, ObjectHead_Parent_twObjectIx
-          FROM RMPObject
-         WHERE ObjectHead_Self_twObjectIx = twRMPObjectIx;
+        SELECT o.ObjectHead_Parent_wClass, o.ObjectHead_Parent_twObjectIx
+          INTO   ObjectHead_Parent_wClass,   ObjectHead_Parent_twObjectIx
+          FROM RMPObject AS o
+         WHERE o.ObjectHead_Self_twObjectIx = twRMPObjectIx;
 
            SET nCount = ROW_COUNT ();
 
@@ -2575,7 +2589,7 @@ CREATE PROCEDURE call_RMPObject_Validate_Resource
    IN    ObjectHead_Parent_wClass      SMALLINT,
    IN    ObjectHead_Parent_twObjectIx  BIGINT,
    IN    twRMPObjectIx                 BIGINT,
-   IN    Resource_qwResource           BIGINT UNSIGNED,
+   IN    Resource_qwResource           BIGINT,
    IN    Resource_sName                VARCHAR (48),
    IN    Resource_sReference           VARCHAR (128),
    INOUT nError                        INT
@@ -2723,7 +2737,7 @@ BEGIN
             IF twRMPObjectIx > 0
           THEN
                  SELECT o.Type_bType, o.Type_bSubtype
-                   INTO Self_bType, Self_bSubtype
+                   INTO   Self_bType,   Self_bSubtype
                    FROM RMPObject AS o
                   WHERE o.ObjectHead_Self_twObjectIx = twRMPObjectIx;
 -- get max children's type and subtype
@@ -2761,12 +2775,14 @@ BEGIN
             IF ObjectHead_Parent_wClass = SBO_CLASS_RMTOBJECT  AND  Parent_bType <> MVO_RMTOBJECT_TYPE_PARCEL
           THEN
                    CALL call_Error (21, 'Parent\'s Type_bType must be equal to PARCEL when its parent\'s class is RMTOBJECT', nError);
+/*
         ELSEIF ObjectHead_Parent_wClass = SBO_CLASS_RMPOBJECT  AND  Type_bType < Parent_bType
           THEN
                    CALL call_Error (21, 'Type_bType must be greater than or equal to its parent\'s Type_bType', nError);
         ELSEIF ObjectHead_Parent_wClass = SBO_CLASS_RMPOBJECT  AND  Type_bType = Parent_bType  AND  Type_bSubtype <= Parent_bSubtype
           THEN
                    CALL call_Error (21, 'Type_bSubtype must be greater than its parent\'s Type_bType', nError);
+*/
         END IF ;
 END$$
   
@@ -3202,6 +3218,254 @@ DELIMITER ;
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ~~                                                                                                                            ~~
+~~                                           MVD_RP1_Map : set_RMPObject_Parent.sql                                           ~~
+~~                                                                                                                            ~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~                              Copyright 2023-2025 Metaversal Corporation. All rights reserved.                              ~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+
+-- Note that this is not a function of the RMPObject itself, but rather a function of the two parents involved.
+
+DELIMITER $$
+
+CREATE PROCEDURE set_RMPObject_Parent
+(
+   IN    sIPAddress                    VARCHAR (16),
+   IN    twRPersonaIx                  BIGINT,
+   IN    twRMPObjectIx                 BIGINT,
+   IN    wClass                        SMALLINT,
+   IN    twObjectIx                    BIGINT
+   OUT   nResult                       INT
+)
+BEGIN
+       DECLARE SBO_CLASS_RMROOT                           INT DEFAULT 70;
+       DECLARE SBO_CLASS_RMCOBJECT                        INT DEFAULT 71;
+       DECLARE SBO_CLASS_RMTOBJECT                        INT DEFAULT 72;
+       DECLARE SBO_CLASS_RMPOBJECT                        INT DEFAULT 73;
+       DECLARE RMPOBJECT_OP_PARENT                        INT DEFAULT 18;
+
+       DECLARE nError  INT DEFAULT 0;
+       DECLARE bCommit INT DEFAULT 0;
+       DECLARE bError  INT;
+
+       DECLARE ObjectHead_Parent_wClass     SMALLINT;
+       DECLARE ObjectHead_Parent_twObjectIx BIGINT;
+
+       DECLARE Name_wsRMPObjectId            VARCHAR (48);
+       DECLARE Type_bType                    TINYINT UNSIGNED;
+       DECLARE Type_bSubtype                 TINYINT UNSIGNED;
+       DECLARE Type_bFiction                 TINYINT UNSIGNED;
+       DECLARE Type_bMovable                 TINYINT UNSIGNED;
+       DECLARE Owner_twRPersonaIx            BIGINT;
+       DECLARE Resource_qwResource           BIGINT;
+       DECLARE Resource_sName                VARCHAR (48);
+       DECLARE Resource_sReference           VARCHAR (128);
+       DECLARE Transform_Position_dX         DOUBLE;
+       DECLARE Transform_Position_dY         DOUBLE;
+       DECLARE Transform_Position_dZ         DOUBLE;
+       DECLARE Transform_Rotation_dX         DOUBLE;
+       DECLARE Transform_Rotation_dY         DOUBLE;
+       DECLARE Transform_Rotation_dZ         DOUBLE;
+       DECLARE Transform_Rotation_dW         DOUBLE;
+       DECLARE Transform_Scale_dX            DOUBLE;
+       DECLARE Transform_Scale_dY            DOUBLE;
+       DECLARE Transform_Scale_dZ            DOUBLE;
+       DECLARE Bound_dX                      DOUBLE;
+       DECLARE Bound_dY                      DOUBLE;
+       DECLARE Bound_dZ                      DOUBLE;
+
+            -- Create the temp Error table
+        CREATE TEMPORARY TABLE Error
+               (
+                  nOrder                        INT             NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                  dwError                       INT             NOT NULL,
+                  sError                        VARCHAR (255)   NOT NULL
+               );
+
+            -- Create the temp Event table
+        CREATE TEMPORARY TABLE Event
+               (
+                  nOrder                        INT             NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                  sType                         VARCHAR (50)    NOT NULL,
+                  Self_wClass                   SMALLINT        NOT NULL,
+                  Self_twObjectIx               BIGINT          NOT NULL,
+                  Child_wClass                  SMALLINT        NOT NULL,
+                  Child_twObjectIx              BIGINT          NOT NULL,
+                  wFlags                        SMALLINT        NOT NULL,
+                  twEventIz                     BIGINT          NOT NULL,
+                  sJSON_Object                  TEXT            NOT NULL,
+                  sJSON_Child                   TEXT            NOT NULL,
+                  sJSON_Change                  TEXT            NOT NULL
+               );
+
+           SET twRPersonaIx  = IFNULL (twRPersonaIx,  0);
+           SET twRMPObjectIx = IFNULL (twRMPObjectIx, 0);
+
+         START TRANSACTION;
+
+          CALL call_RMPObject_Validate (twRPersonaIx, twRMPObjectIx, ObjectHead_Parent_wClass, ObjectHead_Parent_twObjectIx, nError);
+
+            IF nError = 0
+          THEN
+                     IF ObjectHead_Parent_wClass = wClass  AND  ObjectHead_Parent_twObjectIx = twObjectIx
+                   THEN
+                            CALL call_Error (99, 'The new parent is the same as the current parent', nError);
+                 END IF ;
+        END IF ;
+
+            IF nError = 0
+          THEN
+                 SELECT o.Name_wsRMPObjectId,
+                        o.Type_bType,
+                        o.Type_bSubtype,
+                        o.Type_bFiction,
+                        o.Type_bMovable,
+                        o.Owner_twRPersonaIx,
+                        o.Resource_qwResource,
+                        o.Resource_sName,
+                        o.Resource_sReference,
+                        o.Transform_Position_dX,
+                        o.Transform_Position_dY,
+                        o.Transform_Position_dZ,
+                        o.Transform_Rotation_dX,
+                        o.Transform_Rotation_dY,
+                        o.Transform_Rotation_dZ,
+                        o.Transform_Rotation_dW,
+                        o.Transform_Scale_dX,
+                        o.Transform_Scale_dY,
+                        o.Transform_Scale_dZ,
+                        o.Bound_dX,
+                        o.Bound_dY,
+                        o.Bound_dZ
+                   INTO Name_wsRMPObjectId,
+                        Type_bType,
+                        Type_bSubtype,
+                        Type_bFiction,
+                        Type_bMovable,
+                        Owner_twRPersonaIx,
+                        Resource_qwResource,
+                        Resource_sName,
+                        Resource_sReference,
+                        Transform_Position_dX,
+                        Transform_Position_dY,
+                        Transform_Position_dZ,
+                        Transform_Rotation_dX,
+                        Transform_Rotation_dY,
+                        Transform_Rotation_dZ,
+                        Transform_Rotation_dW,
+                        Transform_Scale_dX,
+                        Transform_Scale_dY,
+                        Transform_Scale_dZ,
+                        Bound_dX,
+                        Bound_dY,
+                        Bound_dZ
+                   FROM RMPObject AS o
+                  WHERE o.ObjectHead_Self_twObjectIx = twRMPObjectIx;
+
+                     IF wClass = SBO_CLASS_RMROOT
+                     OR wClass = SBO_CLASS_RMTOBJECT
+                     OR wClass = SBO_CLASS_RMPOBJECT
+                   THEN
+                            CALL call_RMPObject_Validate_Type (wClass, twObjectIx, twRMPObjectIx, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, nError);
+                   ELSE
+                            CALL call_Error (99, 'wClass is invalid', nError);
+                 END IF ;
+        END IF ;
+
+            IF nError = 0
+          THEN
+                     IF ObjectHead_Parent_wClass = SBO_CLASS_RMROOT
+                   THEN
+                            CALL call_RMRoot_Event_RMPObject_Close    (ObjectHead_Parent_twObjectIx, twRMPObjectIx, bError, 1);
+                 ELSEIF ObjectHead_Parent_wClass = SBO_CLASS_RMTOBJECT
+                   THEN
+                            CALL call_RMTObject_Event_RMPObject_Close (ObjectHead_Parent_twObjectIx, twRMPObjectIx, bError, 1);
+                 ELSEIF ObjectHead_Parent_wClass = SBO_CLASS_RMPOBJECT
+                   THEN
+                            CALL call_RMPObject_Event_RMPObject_Close (ObjectHead_Parent_twObjectIx, twRMPObjectIx, bError, 1);
+                   ELSE
+                            CALL call_Error (99, 'Internal error', nError);
+                 END IF ;
+
+                     IF bError = 0
+                   THEN
+
+
+                          UPDATE RMPObject
+                             SET ObjectHead_Parent_wClass     = wClass,
+                                 ObjectHead_Parent_twObjectIx = twObjectIx
+                           WHERE ObjectHead_Self_twObjectIx = twRMPObjectIx;
+
+                             SET bError = IF (ROW_COUNT () = 1, 0, 1);
+
+                              IF bError = 0
+                            THEN
+                                       IF wClass = SBO_CLASS_RMROOT
+                                     THEN
+                                              CALL call_RMRoot_Event_RMPObject_Open    (twObjectIx, Name_wsRMPObjectId, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ, twRMPObjectIx, bError, 1);
+                                  ELSE IF wClass = SBO_CLASS_RMTOBJECT
+                                     THEN
+                                              CALL call_RMTObject_Event_RMPObject_Open (twObjectIx, Name_wsRMPObjectId, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ, twRMPObjectIx, bError, 1);
+                                  ELSE IF wClass = SBO_CLASS_RMPOBJECT
+                                     THEN
+                                              CALL call_RMPObject_Event_RMPObject_Open (twObjectIx, Name_wsRMPObjectId, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ, twRMPObjectIx, bError, 1);
+                                     ELSE
+                                              CALL call_Error (99, 'Internal error', nError);
+                                   END IF ;
+                  
+                                       IF bError = 0
+                                     THEN
+                                               SET bCommit = 1;
+                                     ELSE
+                                              CALL call_Error (-3, 'Failed to update new parent');
+                                   END IF ;
+                            ELSE
+                                     CALL call_Error -2, ('Failed to update RMPObject');
+                          END IF ;
+                   ELSE
+                            CALL call_Error -1, ('Failed to update old parent');
+                 END IF ;
+        END IF ;
+
+            IF bCommit = 1
+          THEN
+                    SET bCommit = 0;
+                 
+                   CALL call_RMPObject_Log (RMPOBJECT_OP_PARENT, sIPAddress, twRPersonaIx, twRMPObjectIx, bError);
+                     IF bError = 0
+                   THEN
+                            CALL call_Event_Push (bError);
+                              IF bError = 0
+                            THEN
+                                      SET bCommit = 1;
+                            ELSE
+                                     CALL call_Error (-9, 'Failed to push events', nError);
+                          END IF ;
+                   ELSE
+                            CALL call_Error (-8, 'Failed to log action', nError);
+                 END IF ;
+        END IF ;
+
+            IF bCommit = 0
+          THEN
+                 SELECT dwError, sError FROM Error;
+
+               ROLLBACK ;
+          ELSE
+                 COMMIT ;
+        END IF ;
+
+          DROP TEMPORARY TABLE Error;
+          DROP TEMPORARY TABLE Event;
+
+           SET nResult = bCommit - 1 - nError;
+END$$
+  
+DELIMITER ;
+
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~                                                                                                                            ~~
 ~~                                          MVD_RP1_Map : set_RMPObject_Resource.sql                                          ~~
 ~~                                                                                                                            ~~
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -3215,7 +3479,7 @@ CREATE PROCEDURE set_RMPObject_Resource
    IN    sIPAddress                    VARCHAR (16),
    IN    twRPersonaIx                  BIGINT,
    IN    twRMPObjectIx                 BIGINT,
-   IN    Resource_qwResource           BIGINT UNSIGNED,
+   IN    Resource_qwResource           BIGINT,
    IN    Resource_sName                VARCHAR (48),
    IN    Resource_sReference           VARCHAR (128),
    OUT   nResult                       INT
@@ -3395,7 +3659,7 @@ BEGIN
 
             IF nError = 0
           THEN
-                   CALL call_RMPObject_Event_RMPObject_Close (twRMPObjectIx, twRMPObjectIx_Close, bError);
+                   CALL call_RMPObject_Event_RMPObject_Close (twRMPObjectIx, twRMPObjectIx_Close, bError, 0);
                      IF bError = 0
                    THEN
                              SET bCommit = 1;
@@ -3462,7 +3726,7 @@ CREATE PROCEDURE set_RMPObject_RMPObject_Open
    IN    Type_bFiction                 TINYINT UNSIGNED,
    IN    Type_bMovable                 TINYINT UNSIGNED,
    IN    Owner_twRPersonaIx            BIGINT,
-   IN    Resource_qwResource           BIGINT UNSIGNED,
+   IN    Resource_qwResource           BIGINT,
    IN    Resource_sName                VARCHAR (48),
    IN    Resource_sReference           VARCHAR (128),
    IN    Transform_Position_dX         DOUBLE,
@@ -3535,7 +3799,7 @@ BEGIN
 
             IF nError = 0
           THEN
-                   CALL call_RMPObject_Event_RMPObject_Open (twRMPObjectIx, Name_wsRMPObjectId, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ, twRMPObjectIx_Open, bError);
+                   CALL call_RMPObject_Event_RMPObject_Open (twRMPObjectIx, Name_wsRMPObjectId, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ, twRMPObjectIx_Open, bError, 0);
                      IF bError = 0
                    THEN
                           SELECT twRMPObjectIx_Open AS twRMPObject;
@@ -4931,7 +5195,7 @@ DELIMITER $$
 CREATE PROCEDURE call_RMTObject_Event_Resource
 (
    IN    twRMTObjectIx                 BIGINT,
-   IN    Resource_qwResource           BIGINT UNSIGNED,
+   IN    Resource_qwResource           BIGINT,
    IN    Resource_sName                VARCHAR (48),
    IN    Resource_sReference           VARCHAR (128),
    OUT   bError                        INT
@@ -5004,7 +5268,8 @@ CREATE PROCEDURE call_RMTObject_Event_RMPObject_Close
 (
    IN    twRMTObjectIx                 BIGINT,
    IN    twRMPObjectIx_Close           BIGINT,
-   OUT   bError                        INT
+   OUT   bError                        INT,
+   IN    bReparent                     TINYINT UNSIGNED
 )
 BEGIN
        DECLARE SBO_CLASS_RMTOBJECT                        INT DEFAULT 72;
@@ -5016,10 +5281,13 @@ BEGIN
           CALL call_RMTObject_Event (twRMTObjectIx, twEventIz, bError);
             IF bError = 0
           THEN
-                 DELETE FROM RMPObject                                        -- we actually want to delete the entire tree - all the way down to the pobject!
-                  WHERE ObjectHead_Self_twObjectIx = twRMPObjectIx_Close;
-
-                    SET bError = IF (ROW_COUNT () = 1, 0, 1);
+                     IF bReparent = 0
+                   THEN
+                          DELETE FROM RMPObject                                        -- we actually want to delete the entire tree - all the way down to the pobject!
+                           WHERE ObjectHead_Self_twObjectIx = twRMPObjectIx_Close;
+         
+                             SET bError = IF (ROW_COUNT () = 1, 0, 1);
+                 END IF ;
 
                      IF bError = 0
                    THEN
@@ -5067,7 +5335,7 @@ CREATE PROCEDURE call_RMTObject_Event_RMPObject_Open
    IN    Type_bFiction                 TINYINT UNSIGNED,
    IN    Type_bMovable                 TINYINT UNSIGNED,
    IN    Owner_twRPersonaIx            BIGINT,
-   IN    Resource_qwResource           BIGINT UNSIGNED,
+   IN    Resource_qwResource           BIGINT,
    IN    Resource_sName                VARCHAR (48),
    IN    Resource_sReference           VARCHAR (128),
    IN    Transform_Position_dX         DOUBLE,
@@ -5083,8 +5351,9 @@ CREATE PROCEDURE call_RMTObject_Event_RMPObject_Open
    IN    Bound_dX                      DOUBLE,
    IN    Bound_dY                      DOUBLE,
    IN    Bound_dZ                      DOUBLE,
-   OUT   twRMPObjectIx                 BIGINT,
-   OUT   bError                        INT
+   OUT   twRMPObjectIx_Open            BIGINT,
+   OUT   bError                        INT,
+   IN    bReparent                     TINYINT UNSIGNED
 )
 BEGIN
        DECLARE SBO_CLASS_RMTOBJECT                        INT DEFAULT 72;
@@ -5096,16 +5365,19 @@ BEGIN
           CALL call_RMTObject_Event (twRMTObjectIx, twEventIz, bError);
             IF bError = 0
           THEN
-                 INSERT INTO RMPObject
-                        (ObjectHead_Parent_wClass, ObjectHead_Parent_twObjectIx, ObjectHead_Self_wClass, ObjectHead_twEventIz, ObjectHead_wFlags, Name_wsRMPObjectId, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ)
-                 VALUES (SBO_CLASS_RMTOBJECT,      twRMTObjectIx,                SBO_CLASS_RMPOBJECT,    0,                    32,                Name_wsRMPObjectId, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ);
+                     IF bReparent = 0
+                   THEN
+                          INSERT INTO RMPObject
+                                 (ObjectHead_Parent_wClass, ObjectHead_Parent_twObjectIx, ObjectHead_Self_wClass, ObjectHead_twEventIz, ObjectHead_wFlags, Name_wsRMPObjectId, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ)
+                          VALUES (SBO_CLASS_RMTOBJECT,      twRMTObjectIx,                SBO_CLASS_RMPOBJECT,    0,                    32,                Name_wsRMPObjectId, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ);
+         
+                             SET bError = IF (ROW_COUNT () = 1, 0, 1);
 
-                    SET bError = IF (ROW_COUNT () = 1, 0, 1);
+                             SET twRMPObjectIx_Open = LAST_INSERT_ID ();
+                 END IF ;
 
                      IF bError = 0
                    THEN
-                             SET twRMPObjectIx = LAST_INSERT_ID ();
-
                           INSERT INTO Event
                                  (sType, Self_wClass, Self_twObjectIx, Child_wClass, Child_twObjectIx, wFlags, twEventIz, sJSON_Object, sJSON_Child, sJSON_Change)
                           SELECT 'RMPOBJECT_OPEN',
@@ -5113,7 +5385,7 @@ BEGIN
                                  SBO_CLASS_RMTOBJECT,
                                  twRMTObjectIx,
                                  SBO_CLASS_RMPOBJECT,
-                                 twRMPObjectIx,
+                                 twRMPObjectIx_Open,
                                  SBA_SUBSCRIBE_REFRESH_EVENT_EX_FLAG_OPEN,
                                  twEventIz,
 
@@ -5265,7 +5537,7 @@ CREATE PROCEDURE call_RMTObject_Event_RMTObject_Open
    IN    Type_bSubtype                 TINYINT UNSIGNED,
    IN    Type_bFiction                 TINYINT UNSIGNED,
    IN    Owner_twRPersonaIx            BIGINT,
-   IN    Resource_qwResource           BIGINT UNSIGNED,
+   IN    Resource_qwResource           BIGINT,
    IN    Resource_sName                VARCHAR (48),
    IN    Resource_sReference           VARCHAR (128),
    IN    Transform_Position_dX         DOUBLE,
@@ -5694,10 +5966,10 @@ CREATE PROCEDURE call_RMTObject_Validate
 BEGIN
        DECLARE nCount INT;
 
-        SELECT ObjectHead_Parent_wClass, ObjectHead_Parent_twObjectIx
-          INTO ObjectHead_Parent_wClass, ObjectHead_Parent_twObjectIx
-          FROM RMTObject
-         WHERE ObjectHead_Self_twObjectIx = twRMTObjectIx;
+        SELECT o.ObjectHead_Parent_wClass, o.ObjectHead_Parent_twObjectIx
+          INTO   ObjectHead_Parent_wClass,   ObjectHead_Parent_twObjectIx
+          FROM RMTObject AS o
+         WHERE o.ObjectHead_Self_twObjectIx = twRMTObjectIx;
 
            SET nCount = ROW_COUNT ();
 
@@ -6141,7 +6413,7 @@ CREATE PROCEDURE call_RMTObject_Validate_Resource
    IN    ObjectHead_Parent_wClass      SMALLINT,
    IN    ObjectHead_Parent_twObjectIx  BIGINT,
    IN    twRMTObjectIx                 BIGINT,
-   IN    Resource_qwResource           BIGINT UNSIGNED,
+   IN    Resource_qwResource           BIGINT,
    IN    Resource_sName                VARCHAR (48),
    IN    Resource_sReference           VARCHAR (128),
    INOUT nError                        INT
@@ -6279,18 +6551,18 @@ BEGIN
 
             IF ObjectHead_Parent_wClass = SBO_CLASS_RMTOBJECT
           THEN
-                 SELECT Type_bType,   Type_bSubtype
+                 SELECT o.Type_bType, o.Type_bSubtype
                    INTO Parent_bType, Parent_bSubtype
                    FROM RMTObject AS o
-                  WHERE ObjectHead_Self_twObjectIx = ObjectHead_Parent_twObjectIx;
+                  WHERE o.ObjectHead_Self_twObjectIx = ObjectHead_Parent_twObjectIx;
         END IF ;
 
             IF twRMTObjectIx > 0
           THEN
-                 SELECT Type_bType, Type_bSubtype
-                   INTO Self_bType, Self_bSubtype
+                 SELECT o.Type_bType, o.Type_bSubtype
+                   INTO   Self_bType,   Self_bSubtype
                    FROM RMTObject AS o
-                  WHERE ObjectHead_Self_twObjectIx = twRMTObjectIx;
+                  WHERE o.ObjectHead_Self_twObjectIx = twRMTObjectIx;
 -- get max children's type and subtype
 
         END IF ;
@@ -7082,7 +7354,7 @@ CREATE PROCEDURE set_RMTObject_Resource
    IN    sIPAddress                    VARCHAR (16),
    IN    twRPersonaIx                  BIGINT,
    IN    twRMTObjectIx                 BIGINT,
-   IN    Resource_qwResource           BIGINT UNSIGNED,
+   IN    Resource_qwResource           BIGINT,
    IN    Resource_sName                VARCHAR (48),
    IN    Resource_sReference           VARCHAR (128),
    OUT   nResult                       INT
@@ -7262,7 +7534,7 @@ BEGIN
 
             IF nError = 0
           THEN
-                   CALL call_RMTObject_Event_RMPObject_Close (twRMTObjectIx, twRMPObjectIx_Close, bError);
+                   CALL call_RMTObject_Event_RMPObject_Close (twRMTObjectIx, twRMPObjectIx_Close, bError, 0);
                      IF bError = 0
                    THEN
                              SET bCommit = 1;
@@ -7329,7 +7601,7 @@ CREATE PROCEDURE set_RMTObject_RMPObject_Open
    IN    Type_bFiction                 TINYINT UNSIGNED,
    IN    Type_bMovable                 TINYINT UNSIGNED,
    IN    Owner_twRPersonaIx            BIGINT,
-   IN    Resource_qwResource           BIGINT UNSIGNED,
+   IN    Resource_qwResource           BIGINT,
    IN    Resource_sName                VARCHAR (48),
    IN    Resource_sReference           VARCHAR (128),
    IN    Transform_Position_dX         DOUBLE,
@@ -7402,7 +7674,7 @@ BEGIN
 
             IF nError = 0
           THEN
-                   CALL call_RMTObject_Event_RMPObject_Open (twRMTObjectIx, Name_wsRMPObjectId, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ, twRMPObjectIx_Open, bError);
+                   CALL call_RMTObject_Event_RMPObject_Open (twRMTObjectIx, Name_wsRMPObjectId, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ, twRMPObjectIx_Open, bError, 0);
                      IF bError = 0
                    THEN
                           SELECT twRMPObjectIx_Open AS twRMPObject;
@@ -7603,7 +7875,7 @@ CREATE PROCEDURE set_RMTObject_RMTObject_Open
    IN    Type_bSubtype                 TINYINT UNSIGNED,
    IN    Type_bFiction                 TINYINT UNSIGNED,
    IN    Owner_twRPersonaIx            BIGINT,
-   IN    Resource_qwResource           BIGINT UNSIGNED,
+   IN    Resource_qwResource           BIGINT,
    IN    Resource_sName                VARCHAR (48),
    IN    Resource_sReference           VARCHAR (128),
    IN    Transform_Position_dX         DOUBLE,
@@ -8457,7 +8729,7 @@ DELIMITER $$
 CREATE PROCEDURE call_RMCObject_Event_Resource
 (
    IN    twRMCObjectIx                 BIGINT,
-   IN    Resource_qwResource           BIGINT UNSIGNED,
+   IN    Resource_qwResource           BIGINT,
    IN    Resource_sName                VARCHAR (48),
    IN    Resource_sReference           VARCHAR (128),
    OUT   bError                        INT
@@ -8591,7 +8863,7 @@ CREATE PROCEDURE call_RMCObject_Event_RMCObject_Open
    IN    Type_bSubtype                 TINYINT UNSIGNED,
    IN    Type_bFiction                 TINYINT UNSIGNED,
    IN    Owner_twRPersonaIx            BIGINT,
-   IN    Resource_qwResource           BIGINT UNSIGNED,
+   IN    Resource_qwResource           BIGINT,
    IN    Resource_sName                VARCHAR (48),
    IN    Resource_sReference           VARCHAR (128),
    IN    Transform_Position_dX         DOUBLE,
@@ -8811,7 +9083,7 @@ CREATE PROCEDURE call_RMCObject_Event_RMTObject_Open
    IN    Type_bSubtype                 TINYINT UNSIGNED,
    IN    Type_bFiction                 TINYINT UNSIGNED,
    IN    Owner_twRPersonaIx            BIGINT,
-   IN    Resource_qwResource           BIGINT UNSIGNED,
+   IN    Resource_qwResource           BIGINT,
    IN    Resource_sName                VARCHAR (48),
    IN    Resource_sReference           VARCHAR (128),
    IN    Transform_Position_dX         DOUBLE,
@@ -9247,10 +9519,10 @@ CREATE PROCEDURE call_RMCObject_Validate
 BEGIN
        DECLARE nCount INT;
 
-        SELECT ObjectHead_Parent_wClass, ObjectHead_Parent_twObjectIx
-          INTO ObjectHead_Parent_wClass, ObjectHead_Parent_twObjectIx
-          FROM RMCObject
-         WHERE ObjectHead_Self_twObjectIx = twRMCObjectIx;
+        SELECT o.ObjectHead_Parent_wClass, o.ObjectHead_Parent_twObjectIx
+          INTO   ObjectHead_Parent_wClass,   ObjectHead_Parent_twObjectIx
+          FROM RMCObject AS o
+         WHERE o.ObjectHead_Self_twObjectIx = twRMCObjectIx;
 
            SET nCount = ROW_COUNT ();
 
@@ -9534,7 +9806,7 @@ CREATE PROCEDURE call_RMCObject_Validate_Resource
    IN    ObjectHead_Parent_wClass      SMALLINT,
    IN    ObjectHead_Parent_twObjectIx  BIGINT,
    IN    twRMCObjectIx                 BIGINT,
-   IN    Resource_qwResource           BIGINT UNSIGNED,
+   IN    Resource_qwResource           BIGINT,
    IN    Resource_sName                VARCHAR (48),
    IN    Resource_sReference           VARCHAR (128),
    INOUT nError                        INT
@@ -9672,18 +9944,18 @@ BEGIN
 
             IF ObjectHead_Parent_wClass = SBO_CLASS_RMCOBJECT
           THEN
-                 SELECT Type_bType, Type_bSubtype
+                 SELECT o.Type_bType, o.Type_bSubtype
                    INTO Parent_bType, Parent_bSubtype
                    FROM RMCObject AS o
-                  WHERE ObjectHead_Self_twObjectIx = ObjectHead_Parent_twObjectIx;
+                  WHERE o.ObjectHead_Self_twObjectIx = ObjectHead_Parent_twObjectIx;
         END IF ;
 
             IF twRMCObjectIx > 0
           THEN
-                 SELECT Type_bType, Type_bSubtype
-                   INTO Self_bType, Self_bSubtype
+                 SELECT o.Type_bType, o.Type_bSubtype
+                   INTO   Self_bType,   Self_bSubtype
                    FROM RMCObject AS o
-                  WHERE ObjectHead_Self_twObjectIx = twRMCObjectIx;
+                  WHERE o.ObjectHead_Self_twObjectIx = twRMCObjectIx;
 -- get max children's type and subtype
 
         END IF ;
@@ -10573,7 +10845,7 @@ CREATE PROCEDURE set_RMCObject_Resource
    IN    sIPAddress                    VARCHAR (16),
    IN    twRPersonaIx                  BIGINT,
    IN    twRMCObjectIx                 BIGINT,
-   IN    Resource_qwResource           BIGINT UNSIGNED,
+   IN    Resource_qwResource           BIGINT,
    IN    Resource_sName                VARCHAR (48),
    IN    Resource_sReference           VARCHAR (128),
    OUT   nResult                       INT
@@ -10824,7 +11096,7 @@ CREATE PROCEDURE set_RMCObject_RMCObject_Open
    IN    Type_bSubtype                 TINYINT UNSIGNED,
    IN    Type_bFiction                 TINYINT UNSIGNED,
    IN    Owner_twRPersonaIx            BIGINT,
-   IN    Resource_qwResource           BIGINT UNSIGNED,
+   IN    Resource_qwResource           BIGINT,
    IN    Resource_sName                VARCHAR (48),
    IN    Resource_sReference           VARCHAR (128),
    IN    Transform_Position_dX         DOUBLE,
@@ -11104,7 +11376,7 @@ CREATE PROCEDURE set_RMCObject_RMTObject_Open
    IN    Type_bSubtype                 TINYINT UNSIGNED,
    IN    Type_bFiction                 TINYINT UNSIGNED,
    IN    Owner_twRPersonaIx            BIGINT,
-   IN    Resource_qwResource           BIGINT UNSIGNED,
+   IN    Resource_qwResource           BIGINT,
    IN    Resource_sName                VARCHAR (48),
    IN    Resource_sReference           VARCHAR (128),
    IN    Transform_Position_dX         DOUBLE,
@@ -11889,8 +12161,9 @@ DELIMITER $$
 CREATE PROCEDURE call_RMRoot_Event_RMPObject_Close
 (
    IN    twRMRootIx                    BIGINT,
-   IN    twRMPObjectIx                 BIGINT,
-   OUT   bError                        INT
+   IN    twRMPObjectIx_Close           BIGINT,
+   OUT   bError                        INT,
+   IN    bReparent                     TINYINT UNSIGNED
 )
 BEGIN
        DECLARE SBO_CLASS_RMROOT                           INT DEFAULT 70;
@@ -11902,10 +12175,13 @@ BEGIN
           CALL call_RMRoot_Event (twRMRootIx, twEventIz, bError);
             IF bError = 0
           THEN
-                 DELETE FROM RMPObject                                        -- we actually want to delete the entire tree - all the way down to the pobject!
-                  WHERE ObjectHead_Self_twObjectIx = twRMPObjectIx;
-
-                    SET bError = IF (ROW_COUNT () = 1, 0, 1);
+                     IF bReparent = 0
+                   THEN
+                          DELETE FROM RMPObject                                        -- we actually want to delete the entire tree - all the way down to the pobject!
+                           WHERE ObjectHead_Self_twObjectIx = twRMPObjectIx_Close;
+         
+                             SET bError = IF (ROW_COUNT () = 1, 0, 1);
+                 END IF ;
 
                      IF bError = 0
                    THEN
@@ -11916,7 +12192,7 @@ BEGIN
                                  SBO_CLASS_RMROOT,
                                  twRMRootIx,
                                  SBO_CLASS_RMPOBJECT,
-                                 twRMPObjectIx,
+                                 twRMPObjectIx_Close,
                                  SBA_SUBSCRIBE_REFRESH_EVENT_EX_FLAG_CLOSE,
                                  twEventIz,
 
@@ -11969,8 +12245,9 @@ CREATE PROCEDURE call_RMRoot_Event_RMPObject_Open
    IN    Bound_dX                      DOUBLE,
    IN    Bound_dY                      DOUBLE,
    IN    Bound_dZ                      DOUBLE,
-   OUT   twRMPObjectIx                 BIGINT,
-   OUT   bError                        INT
+   OUT   twRMPObjectIx_Open            BIGINT,
+   OUT   bError                        INT,
+   IN    bReparent                     TINYINT UNSIGNED
 )
 BEGIN
        DECLARE SBO_CLASS_RMROOT                           INT DEFAULT 70;
@@ -11982,16 +12259,19 @@ BEGIN
           CALL call_RMRoot_Event (twRMRootIx, twEventIz, bError);
             IF bError = 0
           THEN
-                 INSERT INTO RMPObject
-                        (ObjectHead_Parent_wClass, ObjectHead_Parent_twObjectIx, ObjectHead_Self_wClass, ObjectHead_twEventIz, ObjectHead_wFlags, Name_wsRMPObjectId, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ)
-                 VALUES (SBO_CLASS_RMROOT,         twRMRootIx,                   SBO_CLASS_RMPOBJECT,    0,                    32,                Name_wsRMPObjectId, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ);
+                     IF bReparent = 0
+                   THEN
+                          INSERT INTO RMPObject
+                                 (ObjectHead_Parent_wClass, ObjectHead_Parent_twObjectIx, ObjectHead_Self_wClass, ObjectHead_twEventIz, ObjectHead_wFlags, Name_wsRMPObjectId, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ)
+                          VALUES (SBO_CLASS_RMROOT,         twRMRootIx,                   SBO_CLASS_RMPOBJECT,    0,                    32,                Name_wsRMPObjectId, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ);
+         
+                             SET bError = IF (ROW_COUNT () = 1, 0, 1);
 
-                    SET bError = IF (ROW_COUNT () = 1, 0, 1);
+                             SET twRMPObjectIx_Open = LAST_INSERT_ID ();
+                 END IF ;
 
                      IF bError = 0
                    THEN
-                             SET twRMPObjectIx = LAST_INSERT_ID ();
-
                           INSERT INTO Event
                                  (sType, Self_wClass, Self_twObjectIx, Child_wClass, Child_twObjectIx, wFlags, twEventIz, sJSON_Object, sJSON_Child, sJSON_Change)
                           SELECT 'RMPOBJECT_OPEN',
@@ -11999,7 +12279,7 @@ BEGIN
                                  SBO_CLASS_RMROOT,
                                  twRMRootIx,
                                  SBO_CLASS_RMPOBJECT,
-                                 twRMPObjectIx,
+                                 twRMPObjectIx_Open,
                                  SBA_SUBSCRIBE_REFRESH_EVENT_EX_FLAG_OPEN,
                                  twEventIz,
 
@@ -12358,12 +12638,12 @@ CREATE PROCEDURE call_RMRoot_Validate
 BEGIN
        DECLARE nCount INT;
 
-        SELECT ObjectHead_Parent_wClass, ObjectHead_Parent_twObjectIx
-          INTO ObjectHead_Parent_wClass, ObjectHead_Parent_twObjectIx
-          FROM RMRoot
-         WHERE ObjectHead_Self_twObjectIx = twRMRootIx;
+        SELECT o.ObjectHead_Parent_wClass, o.ObjectHead_Parent_twObjectIx
+          INTO   ObjectHead_Parent_wClass,   ObjectHead_Parent_twObjectIx
+          FROM RMRoot AS o
+         WHERE o.ObjectHead_Self_twObjectIx = twRMRootIx;
 
-        SET nCount = ROW_COUNT ();
+           SET nCount = ROW_COUNT ();
 
             IF twRPersonaIx <= 0
           THEN
@@ -12924,7 +13204,7 @@ CREATE PROCEDURE set_RMRoot_RMCObject_Open
    IN    Type_bSubtype                 TINYINT UNSIGNED,
    IN    Type_bFiction                 TINYINT UNSIGNED,
    IN    Owner_twRPersonaIx            BIGINT,
-   IN    Resource_qwResource           BIGINT UNSIGNED,
+   IN    Resource_qwResource           BIGINT,
    IN    Resource_sName                VARCHAR (48),
    IN    Resource_sReference           VARCHAR (128),
    IN    Transform_Position_dX         DOUBLE,
@@ -13138,7 +13418,7 @@ BEGIN
 
             IF nError = 0
           THEN
-                   CALL call_RMRoot_Event_RMPObject_Close (twRMRootIx, twRMPObjectIx_Close, bError);
+                   CALL call_RMRoot_Event_RMPObject_Close (twRMRootIx, twRMPObjectIx_Close, bError, 0);
                      IF bError = 0
                    THEN
                              SET bCommit = 1;
@@ -13205,7 +13485,7 @@ CREATE PROCEDURE set_RMRoot_RMPObject_Open
    IN    Type_bFiction                 TINYINT UNSIGNED,
    IN    Type_bMovable                 TINYINT UNSIGNED,
    IN    Owner_twRPersonaIx            BIGINT,
-   IN    Resource_qwResource           BIGINT UNSIGNED,
+   IN    Resource_qwResource           BIGINT,
    IN    Resource_sName                VARCHAR (48),
    IN    Resource_sReference           VARCHAR (128),
    IN    Transform_Position_dX         DOUBLE,
@@ -13278,7 +13558,7 @@ BEGIN
 
             IF nError = 0
           THEN
-                   CALL call_RMRoot_Event_RMPObject_Open (twRMRootIx, Name_wsRMPObjectId, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ, twRMPObjectIx_Open, bError);
+                   CALL call_RMRoot_Event_RMPObject_Open (twRMRootIx, Name_wsRMPObjectId, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ, twRMPObjectIx_Open, bError, 0);
                      IF bError = 0
                    THEN
                           SELECT twRMPObjectIx_Open AS twRMPObject;
@@ -13474,7 +13754,7 @@ CREATE PROCEDURE set_RMRoot_RMTObject_Open
    IN    Type_bSubtype                 TINYINT UNSIGNED,
    IN    Type_bFiction                 TINYINT UNSIGNED,
    IN    Owner_twRPersonaIx            BIGINT,
-   IN    Resource_qwResource           BIGINT UNSIGNED,
+   IN    Resource_qwResource           BIGINT,
    IN    Resource_sName                VARCHAR (48),
    IN    Resource_sReference           VARCHAR (128),
    IN    Transform_Position_dX         DOUBLE,
