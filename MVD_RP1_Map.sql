@@ -3234,7 +3234,7 @@ CREATE PROCEDURE set_RMPObject_Parent
    IN    twRPersonaIx                  BIGINT,
    IN    twRMPObjectIx                 BIGINT,
    IN    wClass                        SMALLINT,
-   IN    twObjectIx                    BIGINT
+   IN    twObjectIx                    BIGINT,
    OUT   nResult                       INT
 )
 BEGIN
