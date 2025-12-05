@@ -155,8 +155,37 @@ function getCacheKey(sReference, scale=null, rotation=null) {
     return sReference || '';
 }
 
+/**
+ * Normalize a reference path to ensure it's correctly resolved
+ * Handles relative paths like /objects/duck.glb or objects/duck.glb
+ */
+function normalizeReferencePath(sReference) {
+    if (!sReference) return sReference;
+    
+    // If it's a URL, return as-is
+    if (isUrl(sReference)) {
+        return sReference;
+    }
+    
+    // If it starts with /, it's already an absolute path from server root
+    if (sReference.startsWith('/')) {
+        return sReference;
+    }
+    
+    // If it starts with objects/, normalize to /objects/
+    if (sReference.startsWith('objects/')) {
+        return '/' + sReference;
+    }
+    
+    // Otherwise, assume it's a relative path and prepend /objects/
+    // This handles cases where just the filename is provided
+    return '/objects/' + sReference;
+}
+
 async function loadModelFromReference(sReference, boundingBox=null, scale=null, rotation=null) {
-    const cacheKey = getCacheKey(sReference, scale, rotation);
+    // Normalize the reference path to ensure correct resolution
+    const normalizedReference = normalizeReferencePath(sReference);
+    const cacheKey = getCacheKey(normalizedReference, scale, rotation);
 
     // Return cached model if available
     if (modelCache.has(cacheKey)) {
@@ -171,15 +200,15 @@ async function loadModelFromReference(sReference, boundingBox=null, scale=null, 
     // Create new loading promise
     const loadingPromise = new Promise( (resolve, reject) => {
 //        if (1isUrl(sReference)) {
-            // Load from URL
-            loader.load(sReference, (gltf) => {
+            // Load from URL using normalized path
+            loader.load(normalizedReference, (gltf) => {
                 const model = gltf.scene;
                 modelCache.set(cacheKey, model);
                 loadingPromises.delete(cacheKey);
                 resolve(model);
             }
             , undefined, (error) => {
-                console.error(`Failed to load model from URL: ${sReference}`, error);
+                console.error(`Failed to load model from URL: ${normalizedReference}`, error);
                 loadingPromises.delete(cacheKey);
                 // Create red placeholder for failed URL loads
                 // Use bounding box dimensions if available, otherwise default to 1x1x1
@@ -207,7 +236,7 @@ async function loadModelFromReference(sReference, boundingBox=null, scale=null, 
                 });
                 // Red placeholder
                 const placeholder = new THREE.Mesh(geometry,material);
-                placeholder.name = sReference ? sReference.replace(/\.[^/.]+$/, "") : "Placeholder (Failed)";
+                placeholder.name = normalizedReference ? normalizedReference.replace(/\.[^/.]+$/, "") : "Placeholder (Failed)";
 
                 modelCache.set(cacheKey, placeholder);
                 resolve(placeholder);
