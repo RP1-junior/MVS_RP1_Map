@@ -211,7 +211,7 @@ class ExtractMap extends MV.MVMF.NOTIFICATION
 
    onReadyState (pNotice)
    {
-      if (this.IsReady () == false)
+      if (this.ReadyState () == this.eSTATE.NOTREADY)
       {
          if (pNotice.pCreator == this.#m_pFabric)
          {
