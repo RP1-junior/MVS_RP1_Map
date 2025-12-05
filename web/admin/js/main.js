@@ -157,7 +157,11 @@ function getCacheKey(sReference, scale=null, rotation=null) {
 
 /**
  * Normalize a reference path to ensure it's correctly resolved
- * Handles relative paths like /objects/duck.glb or objects/duck.glb
+ * Supports multiple formats:
+ * - Absolute paths: /objects/duck.glb (returns as-is)
+ * - Relative paths: objects/duck.glb (normalizes to /objects/duck.glb)
+ * - Filenames: duck.glb (prepends /objects/)
+ * - URLs: http://example.com/model.glb (returns as-is)
  */
 function normalizeReferencePath(sReference) {
     if (!sReference) return sReference;
@@ -168,6 +172,7 @@ function normalizeReferencePath(sReference) {
     }
     
     // If it starts with /, it's already an absolute path from server root
+    // This includes paths like /objects/duck.glb
     if (sReference.startsWith('/')) {
         return sReference;
     }
@@ -178,7 +183,7 @@ function normalizeReferencePath(sReference) {
     }
     
     // Otherwise, assume it's a relative path and prepend /objects/
-    // This handles cases where just the filename is provided
+    // This handles cases where just the filename is provided (e.g., "duck.glb")
     return '/objects/' + sReference;
 }
 
@@ -5207,42 +5212,69 @@ if (objLibPanel && objLibToggle) {
     }, 100);
 }
 
-// List of objects to load (fallback if API doesn't work)
-const OBJECT_FILES_FALLBACK = [
-    'duck.glb',
-    'duck.glb',
-    'duck.glb',
-    'duck.glb',
-    'duck.glb',
-    'duck.glb',
-    'duck.glb',
-    'duck.glb',
-    'duck.glb',
-    'duck.glb',
-    'duck.glb',
-    'duck.glb',
-    'duck.glb',
-    'evilHomer.glb'
-];
-
-// Try to fetch object list from server, fallback to static list
+// Fetch object list from JSON file in /objects directory
 async function getObjectFiles() {
     try {
-        // Try to fetch from a potential API endpoint
-        const response = await fetch('/api/objects/list');
-        if (response.ok) {
-            const data = await response.json();
-            if (Array.isArray(data) && data.length > 0) {
-                return data.filter(file => file.endsWith('.glb') || file.endsWith('.gltf'));
-            }
+        // Construct URL relative to current page location to handle both http and file protocols
+        // If running through server, use absolute path; otherwise construct from current location
+        let jsonUrl = '/objects/objects.json';
+        
+        // If we're on file:// protocol, we can't fetch - return empty and show error
+        if (window.location.protocol === 'file:') {
+            console.error('Cannot load objects.json: Page must be served through HTTP server, not file:// protocol');
+            console.error('Please access the page through the web server (e.g., http://localhost:PORT)');
+            return [];
+        }
+        
+        // Construct full URL if needed (for relative paths)
+        if (!jsonUrl.startsWith('http')) {
+            jsonUrl = new URL(jsonUrl, window.location.origin).href;
+        }
+        
+        console.log('Fetching objects.json from:', jsonUrl);
+        const response = await fetch(jsonUrl);
+        console.log('Fetch status:', response.status, response.statusText);
+        
+        if (!response.ok) {
+            console.error('Failed to fetch objects.json:', response.status, response.statusText);
+            const text = await response.text();
+            console.error('Response body:', text);
+            return [];
+        }
+        
+        const text = await response.text();
+        console.log('Raw response text:', text);
+        let data;
+        try {
+            data = JSON.parse(text);
+            console.log('Loaded objects.json data:', data);
+        } catch (parseError) {
+            console.error('Failed to parse JSON:', parseError, 'Text was:', text);
+            return [];
+        }
+        
+        // Support both array format and object with array property
+        const objectList = Array.isArray(data) ? data : (data.objects || data.files || []);
+        console.log('Extracted object list:', objectList);
+        
+        if (Array.isArray(objectList) && objectList.length > 0) {
+            const filtered = objectList.filter(file => 
+                typeof file === 'string' && (file.endsWith('.glb') || file.endsWith('.gltf'))
+            );
+            console.log('Filtered object files:', filtered);
+            return filtered;
+        } else {
+            console.warn('Object list is empty or not an array');
         }
     } catch (error) {
-        // API not available, use fallback
-        console.log('Object list API not available, using fallback list');
+        console.error('Failed to load objects.json:', error);
+        if (error.message && error.message.includes('CORS')) {
+            console.error('CORS error detected. Make sure you are accessing the page through the web server, not via file:// protocol');
+        }
     }
     
-    // Return fallback list
-    return OBJECT_FILES_FALLBACK;
+    // Return empty array if JSON file not found or invalid
+    return [];
 }
 
 // Create a preview renderer for an object
@@ -5416,23 +5448,37 @@ function createObjectLibraryItem(objectPath) {
 
 // Load and display objects in the library
 async function loadObjectLibrary() {
-    if (!objLibGrid) return;
+    if (!objLibGrid) {
+        console.error('objLibGrid element not found');
+        return;
+    }
     
     objLibGrid.innerHTML = '<div class="col-12 text-center text-muted py-5"><i class="fa-solid fa-spinner fa-spin fa-2x mb-3"></i><p class="mb-0">Loading objects...</p></div>';
     
     try {
+        console.log('Loading object library...');
         const objectFiles = await getObjectFiles();
+        console.log('Received object files:', objectFiles);
         
         if (objectFiles.length === 0) {
-            objLibGrid.innerHTML = '<div class="col-12 text-center text-muted py-5"><i class="fa-solid fa-folder-open fa-2x mb-3"></i><p class="mb-0">No objects found</p></div>';
+            console.warn('No object files found');
+            // Check if we're on file:// protocol and show appropriate message
+            if (window.location.protocol === 'file:') {
+                objLibGrid.innerHTML = '<div class="col-12 text-center text-muted py-5"><i class="fa-solid fa-triangle-exclamation fa-2x mb-3"></i><p class="mb-0">Cannot load objects</p><p class="small mt-2">Page must be accessed through the web server<br>(e.g., http://localhost:PORT)<br>not via file:// protocol</p></div>';
+            } else {
+                objLibGrid.innerHTML = '<div class="col-12 text-center text-muted py-5"><i class="fa-solid fa-folder-open fa-2x mb-3"></i><p class="mb-0">No objects found</p><p class="small mt-2">Check that /objects/objects.json exists</p></div>';
+            }
             return;
         }
         
+        console.log(`Creating ${objectFiles.length} object library items`);
         objLibGrid.innerHTML = '';
         objectFiles.forEach(objectPath => {
+            console.log('Creating item for:', objectPath);
             const item = createObjectLibraryItem(objectPath);
             objLibGrid.appendChild(item);
         });
+        console.log('Object library loaded successfully');
     } catch (error) {
         console.error('Failed to load object library:', error);
         objLibGrid.innerHTML = '<div class="col-12 text-center text-muted py-5"><i class="fa-solid fa-triangle-exclamation fa-2x mb-3"></i><p class="mb-0">Failed to load objects</p></div>';
