@@ -34,6 +34,8 @@ class ExtractMap extends MV.MVMF.NOTIFICATION
       this.#jPObject = this.jSelector.find ('.jsPObject');
       this.#jPObject.on ('change', this.onClick_Scene.bind (this));
 
+      this.jSelector.find ('.jsPublish').on ('click', this.onPublish.bind (this));
+
       this.#m_pFabric = new MV.MVRP.MSF (sURL, MV.MVRP.MSF.eMETHOD.GET);
       this.#m_pFabric.Attach (this);
    }
@@ -319,7 +321,7 @@ class ExtractMap extends MV.MVMF.NOTIFICATION
       return bResult;
    }
 
-   RMCopy_CName (pJSON, pName)
+   RMCopy_Name (pJSON, pName)
    {
       let bResult = true;
 
@@ -401,10 +403,10 @@ class ExtractMap extends MV.MVMF.NOTIFICATION
 
    onRSPGeneric (pIAction, Param)
    {
-      if (pIAction.pResponse.GetResult () == 0)
+      if (pIAction.pResponse.nResult == 0)
       {
       }
-      else console.log ('ERROR: ' + pIAction.pResponse.GetResult ());
+      else console.log ('ERROR: ' + pIAction.pResponse.nResult);
    }
 
    RMPEditType (pRMPObject, pRMPObjectJSON)
@@ -413,7 +415,16 @@ class ExtractMap extends MV.MVMF.NOTIFICATION
       let Payload = pIAction.pRequest;
 
       if (this.RMCopy_Type (pRMPObjectJSON, Payload.pType))
-         pIAction.Send (this, this.onRSPGeneric.bind (This));
+         pIAction.Send (this, this.onRSPGeneric.bind (this));
+   }
+
+   RMPEditName (pRMPObject, pRMPObjectJSON)
+   {
+      let pIAction = pRMPObject.Request ('NAME');
+      let Payload = pIAction.pRequest;
+
+      if (this.RMCopy_Name (pRMPObjectJSON, Payload.pName))
+         pIAction.Send (this, this.onRSPGeneric.bind (this));
    }
 
    RMPEditResource (pRMPObject, pRMPObjectJSON)
@@ -422,7 +433,7 @@ class ExtractMap extends MV.MVMF.NOTIFICATION
       let Payload = pIAction.pRequest;
 
       if (this.RMCopy_Resource (pRMPObject, pRMPObjectJSON, Payload.pResource))
-         pIAction.Send (this, this.onRSPGeneric.bind (This));
+         pIAction.Send (this, this.onRSPGeneric.bind (this));
    }
 
    RMPEditBound (pRMPObject, pRMPObjectJSON)
@@ -431,7 +442,7 @@ class ExtractMap extends MV.MVMF.NOTIFICATION
       let Payload = pIAction.pRequest;
 
       if (this.RMCopy_Bound (pRMPObjectJSON, Payload.pBound))
-         pIAction.Send (this, this.onRSPGeneric.bind (This));
+         pIAction.Send (this, this.onRSPGeneric.bind (this));
    }
 
    RMPEditTransform (pRMPObject, pRMPObjectJSON)
@@ -440,7 +451,7 @@ class ExtractMap extends MV.MVMF.NOTIFICATION
       let Payload = pIAction.pRequest;
 
       if (this.RMCopy_Transform (pRMPObjectJSON, Payload.pTransform))
-         pIAction.Send (this, this.onRSPGeneric.bind (This));
+         pIAction.Send (this, this.onRSPGeneric.bind (this));
    }
 
    RMPEditAll (pRMPObject, pJSON)
@@ -451,16 +462,15 @@ class ExtractMap extends MV.MVMF.NOTIFICATION
       this.RMPEditTransform (pRMPObject, pJSON);
    }
 
-   UpdateRMPObject (pJSON, pRMPObject_Parent)
+   UpdateRMPObject (pJSONObject, pRMPObject_Parent)
    {
-      this.RMPEditAll (pRMPObject_Parent, pJSON);
+      this.RMPEditAll (pRMPObject_Parent, pJSONObject);
 
-      for (let i=0; i < aChildren.length; i++)
+      for (let i=0; i < pJSONObject.aChildren.length; i++)
       {
-         if (aChildren[i].twObjectIx)
+         if (pJSONObject.aChildren[i].twObjectIx)
          {
-            this.RMPEditAll (this.#m_MapRMXItem['73' + '-' + aChildren[i].twObjectIx], aChildren[i]);
-            this.UpdateRMPObject (aChildren[i].aChildren);
+            this.UpdateRMPObject (this.#m_MapRMXItem['73' + '-' + pJSONObject.aChildren[i].twObjectIx], pJSONObject.aChildren[i]);
          }
 /*         
          else
@@ -482,11 +492,14 @@ class ExtractMap extends MV.MVMF.NOTIFICATION
       }
    }
 
-   Publish (JSONData)
+   onPublish (e)
    {
-      if (JSONData.twObjectIx == this.#pRMXRoot.twObjectIx)
+      let sJSON = getJSONEditorText ();
+      let pJSONObject = JSON.parse (sJSON);
+
+      if (pJSONObject[0].twObjectIx == this.#pRMXRoot.twObjectIx)
       {
-         this.UpdateRMPObject (JSONData, this.#pRMXRoot);
+         this.UpdateRMPObject (pJSONObject[0], this.#pRMXRoot);
       }
       else
       {
