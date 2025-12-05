@@ -451,8 +451,10 @@ class ExtractMap extends MV.MVMF.NOTIFICATION
       this.RMPEditTransform (pRMPObject, pJSON);
    }
 
-   AddRMPObject (aChildren, pRMPObject_Parent)
+   UpdateRMPObject (aChildren, pRMPObject_Parent)
    {
+      this.RMPEditAll (pRMPObject_Parent, aChildren[i]);
+
       for (let i=0; i < aChildren.length; i++)
       {
          if (aChildren[i].twObjectIx)
@@ -475,7 +477,7 @@ class ExtractMap extends MV.MVMF.NOTIFICATION
             }
          }
 
-         this.AddRMPObject (aChildren[i].aChildren);
+         this.UpdateRMPObject (aChildren[i].aChildren);
       }
    }
 
@@ -483,11 +485,11 @@ class ExtractMap extends MV.MVMF.NOTIFICATION
    {
       if (JSONData.twObjectIx == this.#pRMXRoot.twObjectIx)
       {
-         this.RMPEditAll ()
+         this.UpdateRMPObject (JSONData, this.#pRMXRoot);
       }
       else
       {
-         this.AddRMPObject (JSONData.aChildren, this.#pRMXRoot);
+//         this.UpdateRMPObject (JSONData.aChildren, this.#pRMXRoot);
       }
    }
 };

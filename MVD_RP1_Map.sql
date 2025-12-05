@@ -3403,10 +3403,10 @@ BEGIN
                                        IF wClass = SBO_CLASS_RMROOT
                                      THEN
                                               CALL call_RMRoot_Event_RMPObject_Open    (twObjectIx, Name_wsRMPObjectId, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ, twRMPObjectIx, bError, 1);
-                                  ELSE IF wClass = SBO_CLASS_RMTOBJECT
+                                   ELSEIF wClass = SBO_CLASS_RMTOBJECT
                                      THEN
                                               CALL call_RMTObject_Event_RMPObject_Open (twObjectIx, Name_wsRMPObjectId, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ, twRMPObjectIx, bError, 1);
-                                  ELSE IF wClass = SBO_CLASS_RMPOBJECT
+                                   ELSEIF wClass = SBO_CLASS_RMPOBJECT
                                      THEN
                                               CALL call_RMPObject_Event_RMPObject_Open (twObjectIx, Name_wsRMPObjectId, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ, twRMPObjectIx, bError, 1);
                                      ELSE
