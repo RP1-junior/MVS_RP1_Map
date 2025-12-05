@@ -134,6 +134,8 @@ body, .dropdown-item{
   top: 0;
   bottom: 0;
   width: 4px;
+  height: 97%;
+  margin: auto;
   cursor: ew-resize;
   z-index: 1056;
   background: transparent;
@@ -153,8 +155,62 @@ body, .dropdown-item{
   background: rgba(255, 255, 255, 0.3);
 }
 
+/* Resize handle for object library panel (vertical) */
+.offcanvas-resize-handle-vertical {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  width: 97%;
+  margin: auto;
+  cursor: ns-resize;
+  z-index: 1056;
+  background: transparent;
+  transition: background 0.2s ease;
+  display: none;
+}
+
+.offcanvas.show .offcanvas-resize-handle-vertical {
+  display: block;
+}
+
+.offcanvas-resize-handle-vertical:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.offcanvas-resize-handle-vertical:active {
+  background: rgba(255, 255, 255, 0.3);
+}
+
 /* Multi-select drag feedback */
 #modelList li.dragging.multi-select {
   border-left: 3px solid #ffcc00;
   background: #444;
+}
+
+/* Object Library Styles */
+#objLibToggle {
+  transition: opacity 0.15s ease-in-out;
+}
+
+#objLibGrid .card {
+  overflow: hidden;
+}
+
+#objLibGrid .card-img-top {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#objLibGrid .card-img-top canvas {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain;
+}
+
+#objLibContent {
+  max-height: 70vh;
+  overflow-y: auto;
 }

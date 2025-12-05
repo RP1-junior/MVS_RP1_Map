@@ -60,13 +60,14 @@
          <div class="container-lg">
             <ul class="navbar-nav gap-2 mb-lg-0 blur rounded-5 bg-dark bg-opacity-25 px-2">
                <li class="nav-item dropdown">
-                  <a class="nav-link ps-3 dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                  <a class="nav-link ps-3 dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
                      <i class="fa-solid fa-cube d-none"></i> scn mkr
                   </a>
                   <ul class="dropdown-menu">
-                     <li><div class="dropdown-item py-2 pe-none"><input type="file" id="file" class="pe-auto"></div></li>
-                     <li><div class="dropdown-item mx-auto py-2 pe-none">
-                        <div class="form-check form-switch pe-auto">
+                     <li><div class="dropdown-item py-2"><select class="form-select jsPObject mb-3" aria-label="Select a scene"></select></li>
+                     <li><div class="dropdown-item py-2"><input type="file" id="file" class="pe-auto"></div></li>
+                     <li><div class="dropdown-item mx-auto py-2">
+                        <div class="form-check form-switch">
                            <input class="form-check-input" type="checkbox" role="switch" id="snap">
                            <label class="form-check-label" for="snap">Snap Objects to Grid</label>
                         </div>
@@ -132,9 +133,6 @@
    </div>
 
    <div id="sidebar" class="position-fixed mt-5 pt-2 ms-3 h-100">
-      <select class="form-select jsPObject mb-3" aria-label="Select a scene">
-      </select>
-
       <div id="modelsPanel" class="card mb-3 rounded-4 bg-dark bg-opacity-75 blur pe-none user-select-none" style="width: 18rem;">
          <div class="card-body">
             <ul class="list-group list-group-flush rounded-3 pe-auto small" id="modelList">
@@ -169,6 +167,16 @@
 
    </div>
 
+   <div class="position-absolute bottom-0 w-100 user-select-none pe-none z-1">
+      <nav class="main navbar navbar-expand py-1 pe-auto">
+         <div class="container-lg">
+            <ul class="d-flex justify-content-center w-100">
+            <button class="btn btn-sm btn-outline-secondary text-light bg-dark rounded-5" type="button" data-bs-toggle="offcanvas" data-bs-target="#objLibPanel" aria-controls="objLibPanel" data-bs-placement="top" title="Open Object Library" id="objLibToggle"><i class="fa-solid fa-shapes"></i> Objects</button>
+         </ul>
+      </nav>
+   </div>
+
+
    <div class="offcanvas offcanvas-end mt-5 rounded-start-4 border-top bg-dark bg-opacity-75 blur" data-bs-scroll="true" data-bs-backdrop="false" tabindex="-1" id="codeEditorPanel" aria-labelledby="codeEditorPanel">
       <div class="offcanvas-resize-handle" id="codeEditorResizeHandle"></div>
       <div class="offcanvas-header d-flex justify-content-between pb-0">
@@ -182,6 +190,22 @@
       </div>
       <div class="offcanvas-footer p-3 pb-4 d-flex justify-content-between" id="jsonButtons">
          <button type="button" class="btn btn-sm btn-primary fa-beat w-100" style="--fa-beat-scale: 1.025; --fa-animation-duration: 2s; display: none;" id="applyChanges"><i class="fa-solid fa-arrows-spin fa-spin"></i> Apply Changes</button>
+      </div>
+   </div>
+
+   <div class="offcanvas offcanvas-bottom rounded-top-4 border-start border-end bg-dark bg-opacity-75 blur mx-5" data-bs-scroll="true" data-bs-backdrop="false" tabindex="-1" id="objLibPanel" aria-labelledby="objLibPanel">
+      <div class="offcanvas-resize-handle-vertical" id="objLibResizeHandle"></div>
+      <div class="offcanvas-header d-flex justify-content-between py-2">
+         <h5 class="offcanvas-title m-0 p-0 user-select-none">Object Library</h5>
+         <button type="button" class="btn-close p-1 rounded-2" data-bs-dismiss="offcanvas" aria-label="Close"><i class="fa-solid fa-arrow-right-from-bracket fa-rotate-90 fa-lg"></i></button>
+      </div>
+      <div class="offcanvas-body py-2" id="objLibContent">
+            <div class="row g-3" id="objLibGrid">
+               <div class="col-12 text-center text-muted py-5">
+                  <i class="fa-solid fa-spinner fa-spin fa-2x mb-3"></i>
+                  <p class="mb-0">Loading objects...</p>
+               </div>
+            </div>
       </div>
    </div>
 
@@ -406,6 +430,47 @@ if (codeEditorPanel && codeEditorResizeHandle) {
       }
    });
 }
+
+// Resize functionality for object library panel (vertical resize from top)
+const objLibResizeHandle = document.getElementById('objLibResizeHandle');
+
+if (objLibPanel && objLibResizeHandle) {
+   let isResizingVertical = false;
+   let startY = 0;
+   let startHeight = 0;
+
+   objLibResizeHandle.addEventListener('mousedown', function(e) {
+      if (!objLibPanel.classList.contains('show')) return;
+
+      isResizingVertical = true;
+      startY = e.clientY;
+      startHeight = objLibPanel.offsetHeight;
+      document.body.style.cursor = 'ns-resize';
+      document.body.style.userSelect = 'none';
+      e.preventDefault();
+   });
+
+   document.addEventListener('mousemove', function(e) {
+      if (!isResizingVertical) return;
+
+      const deltaY = startY - e.clientY; // Positive when dragging up (increasing height)
+      const minHeight = 200; // Minimum height in pixels
+      const maxHeight = window.innerHeight * 0.9; // Maximum 90% of viewport height
+      const newHeight = Math.max(minHeight, Math.min(maxHeight, startHeight + deltaY));
+
+      objLibPanel.style.height = newHeight + 'px';
+      objLibPanel.style.setProperty('--bs-offcanvas-height', newHeight + 'px');
+   });
+
+   document.addEventListener('mouseup', function() {
+      if (isResizingVertical) {
+         isResizingVertical = false;
+         document.body.style.cursor = '';
+         document.body.style.userSelect = '';
+      }
+   });
+}
+
 </script>
 
 </html>

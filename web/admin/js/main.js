@@ -5155,3 +5155,292 @@ updateTransformButtonStates();
 setInterval(() => {
     updateUndoRedoButtons();
 }, 100);
+
+// ===== Object Library =====
+const objLibGrid = document.getElementById('objLibGrid');
+const objLibPanel = document.getElementById('objLibPanel');
+const objLibToggle = document.getElementById('objLibToggle');
+const objectLibraryCache = new Map(); // Cache for preview renderers
+
+// Fade #objLibToggle when objLibPanel is visible
+if (objLibPanel && objLibToggle) {
+    // Use a small delay to ensure Bootstrap is initialized
+    setTimeout(() => {
+        objLibPanel.addEventListener('shown.bs.offcanvas', function () {
+            objLibToggle.classList.add('opacity-0');
+            objLibToggle.style.pointerEvents = 'none';
+        });
+
+        objLibPanel.addEventListener('hidden.bs.offcanvas', function () {
+            objLibToggle.classList.remove('opacity-0');
+            objLibToggle.style.pointerEvents = '';
+        });
+    }, 100);
+}
+
+// List of objects to load (fallback if API doesn't work)
+const OBJECT_FILES_FALLBACK = [
+    'duck.glb',
+    'duck.glb',
+    'duck.glb',
+    'duck.glb',
+    'duck.glb',
+    'duck.glb',
+    'duck.glb',
+    'duck.glb',
+    'duck.glb',
+    'duck.glb',
+    'duck.glb',
+    'duck.glb',
+    'duck.glb',
+    'evilHomer.glb'
+];
+
+// Try to fetch object list from server, fallback to static list
+async function getObjectFiles() {
+    try {
+        // Try to fetch from a potential API endpoint
+        const response = await fetch('/api/objects/list');
+        if (response.ok) {
+            const data = await response.json();
+            if (Array.isArray(data) && data.length > 0) {
+                return data.filter(file => file.endsWith('.glb') || file.endsWith('.gltf'));
+            }
+        }
+    } catch (error) {
+        // API not available, use fallback
+        console.log('Object list API not available, using fallback list');
+    }
+    
+    // Return fallback list
+    return OBJECT_FILES_FALLBACK;
+}
+
+// Create a preview renderer for an object
+function createObjectPreview(objectPath, container) {
+    const width = 100;
+    const height = 100;
+    
+    // Create a small scene for preview
+    const previewScene = new THREE.Scene();
+    previewScene.background = new THREE.Color(0x2a2a2a);
+    
+    const previewCamera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
+    previewCamera.position.set(2, 2, 2);
+    previewCamera.lookAt(0, 0, 0);
+    
+    const previewRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    previewRenderer.setSize(width, height);
+    previewRenderer.setPixelRatio(window.devicePixelRatio);
+    const canvas = previewRenderer.domElement;
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    canvas.style.display = 'block';
+    container.appendChild(canvas);
+    
+    // Add lights
+    previewScene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.2));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+    dirLight.position.set(5, 10, 7);
+    previewScene.add(dirLight);
+    
+    // Load the model
+    loader.load(objectPath, (gltf) => {
+        const model = gltf.scene;
+        
+        // Calculate bounding box and center the model
+        const box = new THREE.Box3().setFromObject(model);
+        const center = box.getCenter(new THREE.Vector3());
+        const size = box.getSize(new THREE.Vector3());
+        
+        // Center the model
+        model.position.sub(center);
+        
+        // Scale to fit in preview (max dimension should be ~1.5)
+        const maxDim = Math.max(size.x, size.y, size.z);
+        const scale = 1.5 / maxDim;
+        model.scale.multiplyScalar(scale);
+        
+        previewScene.add(model);
+        
+        // Animate rotation
+        let angle = 0;
+        function animate() {
+            if (!container.parentElement) {
+                previewRenderer.dispose();
+                return; // Container removed, stop animation
+            }
+            angle += 0.01;
+            model.rotation.y = angle;
+            previewRenderer.render(previewScene, previewCamera);
+            requestAnimationFrame(animate);
+        }
+        animate();
+        
+        // Store renderer for cleanup
+        objectLibraryCache.set(objectPath, { renderer: previewRenderer, scene: previewScene, camera: previewCamera });
+    }, undefined, (error) => {
+        console.error(`Failed to load preview for ${objectPath}:`, error);
+        container.innerHTML = '<div class="text-center text-muted p-3"><i class="fa-solid fa-triangle-exclamation"></i><br>Failed to load</div>';
+    });
+    
+    return previewRenderer;
+}
+
+// Create object library item
+function createObjectLibraryItem(objectPath) {
+    const col = document.createElement('div');
+    col.className = 'col-4 col-md-2 col-xxl-1';
+    
+    const card = document.createElement('div');
+    card.className = 'card bg-dark bg-opacity-50 border-secondary h-100 user-select-none';
+    card.style.cursor = 'pointer';
+    card.style.transition = 'transform 0.2s, box-shadow 0.2s';
+    
+    card.addEventListener('mouseenter', () => {
+        card.style.transform = 'translateY(-5px)';
+        card.style.boxShadow = '0 4px 8px rgba(0,0,0,0.3)';
+    });
+    
+    card.addEventListener('mouseleave', () => {
+        card.style.transform = '';
+        card.style.boxShadow = '';
+    });
+    
+    // Preview container
+    const previewContainer = document.createElement('div');
+    previewContainer.className = 'card-img-top bg-dark';
+    previewContainer.style.height = '100px';
+    previewContainer.style.overflow = 'hidden';
+    previewContainer.style.position = 'relative';
+    
+    // Object name
+    const objectName = objectPath.replace(/^.*[\\\/]/, '').replace(/\.[^/.]+$/, '');
+    const cardBody = document.createElement('div');
+    cardBody.className = 'card-body p-2';
+    
+    const cardTitle = document.createElement('h6');
+    cardTitle.className = 'card-title mb-0 text-center small text-truncate';
+    cardTitle.textContent = objectName;
+    cardTitle.title = objectName;
+    
+    cardBody.appendChild(cardTitle);
+    
+    card.appendChild(previewContainer);
+    card.appendChild(cardBody);
+    
+    // Click handler to add object to scene
+    card.addEventListener('click', async () => {
+        try {
+            const fullPath = `/objects/${objectPath}`;
+            const gltf = await new Promise((resolve, reject) => {
+                loader.load(fullPath, resolve, undefined, reject);
+            });
+            
+            const model = gltf.scene;
+            model.userData.isSelectable = true;
+            model.name = objectName;
+            
+            // Track original source
+            model.userData.sourceRef = {
+                originalFileName: objectPath,
+                baseName: objectName,
+                reference: objectPath
+            };
+            
+            // Cache the model
+            modelCache.set(objectPath, model);
+            
+            // Position at origin or camera focus point
+            model.position.set(0, 0, 0);
+            
+            createBoxHelperFor(model);
+            canvasRoot.add(model);
+            addModelToList(model, model.name);
+            storeInitialTransform(model);
+            selectObject(model);
+            updateBoxHelper(model);
+            frameCameraOn(model);
+            saveSceneState('create', [model]);
+            updateJSONEditorFromScene();
+            
+            // Close the offcanvas
+            const bsOffcanvas = bootstrap.Offcanvas.getInstance(objLibPanel);
+            if (bsOffcanvas) {
+                bsOffcanvas.hide();
+            }
+        } catch (error) {
+            console.error(`Failed to load object ${objectPath}:`, error);
+            alert(`Failed to load object: ${objectName}`);
+        }
+    });
+    
+    col.appendChild(card);
+    
+    // Create preview after adding to DOM
+    setTimeout(() => {
+        createObjectPreview(`/objects/${objectPath}`, previewContainer);
+    }, 100);
+    
+    return col;
+}
+
+// Load and display objects in the library
+async function loadObjectLibrary() {
+    if (!objLibGrid) return;
+    
+    objLibGrid.innerHTML = '<div class="col-12 text-center text-muted py-5"><i class="fa-solid fa-spinner fa-spin fa-2x mb-3"></i><p class="mb-0">Loading objects...</p></div>';
+    
+    try {
+        const objectFiles = await getObjectFiles();
+        
+        if (objectFiles.length === 0) {
+            objLibGrid.innerHTML = '<div class="col-12 text-center text-muted py-5"><i class="fa-solid fa-folder-open fa-2x mb-3"></i><p class="mb-0">No objects found</p></div>';
+            return;
+        }
+        
+        objLibGrid.innerHTML = '';
+        objectFiles.forEach(objectPath => {
+            const item = createObjectLibraryItem(objectPath);
+            objLibGrid.appendChild(item);
+        });
+    } catch (error) {
+        console.error('Failed to load object library:', error);
+        objLibGrid.innerHTML = '<div class="col-12 text-center text-muted py-5"><i class="fa-solid fa-triangle-exclamation fa-2x mb-3"></i><p class="mb-0">Failed to load objects</p></div>';
+    }
+}
+
+// Load object library when panel is shown
+if (objLibPanel) {
+    let libraryLoaded = false;
+    objLibPanel.addEventListener('shown.bs.offcanvas', function () {
+        if (!libraryLoaded) {
+            loadObjectLibrary();
+            libraryLoaded = true;
+        }
+    });
+    
+    // Cleanup previews when panel is hidden
+    objLibPanel.addEventListener('hidden.bs.offcanvas', function () {
+        // Cleanup preview renderers to free memory
+        objectLibraryCache.forEach(({ renderer, scene, camera }) => {
+            // Dispose of geometries and materials
+            scene.traverse((object) => {
+                if (object.geometry) object.geometry.dispose();
+                if (object.material) {
+                    if (Array.isArray(object.material)) {
+                        object.material.forEach(mat => {
+                            if (mat.map) mat.map.dispose();
+                            mat.dispose();
+                        });
+                    } else {
+                        if (object.material.map) object.material.map.dispose();
+                        object.material.dispose();
+                    }
+                }
+            });
+            renderer.dispose();
+        });
+        objectLibraryCache.clear();
+    });
+}
