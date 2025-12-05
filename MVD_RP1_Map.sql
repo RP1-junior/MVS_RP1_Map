@@ -3250,6 +3250,7 @@ BEGIN
 
        DECLARE ObjectHead_Parent_wClass     SMALLINT;
        DECLARE ObjectHead_Parent_twObjectIx BIGINT;
+       DECLARE nCount                       INT;
 
        DECLARE Name_wsRMPObjectId            VARCHAR (48);
        DECLARE Type_bType                    TINYINT UNSIGNED;
@@ -3307,9 +3308,32 @@ BEGIN
 
             IF nError = 0
           THEN
-                     IF ObjectHead_Parent_wClass = wClass  AND  ObjectHead_Parent_twObjectIx = twObjectIx
+                     IF wClass = ObjectHead_Parent_wClass  AND  twObjectIx = ObjectHead_Parent_twObjectIx
                    THEN
                             CALL call_Error (99, 'The new parent is the same as the current parent', nError);
+                 ELSEIF wClass = SBO_CLASS_RMROOT
+                   THEN
+                              IF NOT EXISTS (SELECT 1 FROM RMRoot    WHERE ObjectHead_Self_twObjectIx = twObjectIx)
+                            THEN
+                                     CALL call_Error (99, 'twObjectIx is invalid', nError);
+                          END IF ;
+                    END
+                 ELSEIF wClass = SBO_CLASS_RMTOBJECT
+                   THEN
+                              IF NOT EXISTS (SELECT 1 FROM RMTObject WHERE ObjectHead_Self_twObjectIx = twObjectIx)
+                            THEN
+                                     CALL call_Error (99, 'twObjectIx is invalid', nError);
+                          END IF ;
+                    END
+                 ELSEIF wClass = SBO_CLASS_RMPOBJECT
+                   THEN
+                              IF NOT EXISTS (SELECT 1 FROM RMPObject WHERE ObjectHead_Self_twObjectIx = twObjectIx)
+                            THEN
+                                     CALL call_Error (99, 'twObjectIx is invalid', nError);
+                          END IF ;
+                    END
+                   ELSE
+                            CALL call_Error (99, 'wClass is invalid', nError);
                  END IF ;
         END IF ;
 
@@ -3362,14 +3386,7 @@ BEGIN
                    FROM RMPObject AS o
                   WHERE o.ObjectHead_Self_twObjectIx = twRMPObjectIx;
 
-                     IF wClass = SBO_CLASS_RMROOT
-                     OR wClass = SBO_CLASS_RMTOBJECT
-                     OR wClass = SBO_CLASS_RMPOBJECT
-                   THEN
-                            CALL call_RMPObject_Validate_Type (wClass, twObjectIx, twRMPObjectIx, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, nError);
-                   ELSE
-                            CALL call_Error (99, 'wClass is invalid', nError);
-                 END IF ;
+                   CALL call_RMPObject_Validate_Type (wClass, twObjectIx, twRMPObjectIx, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, nError);
         END IF ;
 
             IF nError = 0
@@ -3802,7 +3819,7 @@ BEGIN
                    CALL call_RMPObject_Event_RMPObject_Open (twRMPObjectIx, Name_wsRMPObjectId, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ, twRMPObjectIx_Open, bError, 0);
                      IF bError = 0
                    THEN
-                          SELECT twRMPObjectIx_Open AS twRMPObject;
+                          SELECT twRMPObjectIx_Open AS twRMPObjectIx;
    
                              SET bCommit = 1;
                    ELSE
@@ -7677,7 +7694,7 @@ BEGIN
                    CALL call_RMTObject_Event_RMPObject_Open (twRMTObjectIx, Name_wsRMPObjectId, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ, twRMPObjectIx_Open, bError, 0);
                      IF bError = 0
                    THEN
-                          SELECT twRMPObjectIx_Open AS twRMPObject;
+                          SELECT twRMPObjectIx_Open AS twRMPObjectIx;
    
                              SET bCommit = 1;
                    ELSE 
@@ -7996,7 +8013,7 @@ BEGIN
 
                             CALL call_RMTMatrix_Relative (SBO_CLASS_RMTOBJECT, twRMTObjectIx, twRMTObjectIx_Open);
 
-                          SELECT twRMTObjectIx_Open AS twRMTObject;
+                          SELECT twRMTObjectIx_Open AS twRMTObjectIx;
    
                              SET bCommit = 1;
                    ELSE 
@@ -11183,7 +11200,7 @@ BEGIN
                    CALL call_RMCObject_Event_RMCObject_Open (twRMCObjectIx, Name_wsRMCObjectId, Type_bType, Type_bSubtype, Type_bFiction, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Orbit_Spin_tmPeriod, Orbit_Spin_tmStart, Orbit_Spin_dA, Orbit_Spin_dB, Bound_dX, Bound_dY, Bound_dZ, Properties_fMass, Properties_fGravity, Properties_fColor, Properties_fBrightness, Properties_fReflectivity, twRMCObjectIx_Open, bError);
                      IF bError = 0
                    THEN
-                          SELECT twRMCObjectIx_Open AS twRMCObject;
+                          SELECT twRMCObjectIx_Open AS twRMCObjectIx;
    
                              SET bCommit = 1;
                    ELSE 
@@ -11497,7 +11514,7 @@ BEGIN
 
                             CALL call_RMTMatrix_Relative (SBO_CLASS_RMCOBJECT, twRMCObjectIx, twRMTObjectIx_Open);
 
-                          SELECT twRMTObjectIx_Open AS twRMTObject;
+                          SELECT twRMTObjectIx_Open AS twRMTObjectIx;
    
                              SET bCommit = 1;
                    ELSE 
@@ -13291,7 +13308,7 @@ BEGIN
                    CALL call_RMRoot_Event_RMCObject_Open (twRMRootIx, Name_wsRMCObjectId, Type_bType, Type_bSubtype, Type_bFiction, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Orbit_Spin_tmPeriod, Orbit_Spin_tmStart, Orbit_Spin_dA, Orbit_Spin_dB, Bound_dX, Bound_dY, Bound_dZ, Properties_fMass, Properties_fGravity, Properties_fColor, Properties_fBrightness, Properties_fReflectivity, twRMCObjectIx_Open, bError);
                      IF bError = 0
                    THEN
-                          SELECT twRMCObjectIx_Open AS twRMCObject;
+                          SELECT twRMCObjectIx_Open AS twRMCObjectIx;
    
                              SET bCommit = 1;
                    ELSE
@@ -13561,7 +13578,7 @@ BEGIN
                    CALL call_RMRoot_Event_RMPObject_Open (twRMRootIx, Name_wsRMPObjectId, Type_bType, Type_bSubtype, Type_bFiction, Type_bMovable, Owner_twRPersonaIx, Resource_qwResource, Resource_sName, Resource_sReference, Transform_Position_dX, Transform_Position_dY, Transform_Position_dZ, Transform_Rotation_dX, Transform_Rotation_dY, Transform_Rotation_dZ, Transform_Rotation_dW, Transform_Scale_dX, Transform_Scale_dY, Transform_Scale_dZ, Bound_dX, Bound_dY, Bound_dZ, twRMPObjectIx_Open, bError, 0);
                      IF bError = 0
                    THEN
-                          SELECT twRMPObjectIx_Open AS twRMPObject;
+                          SELECT twRMPObjectIx_Open AS twRMPObjectIx;
    
                              SET bCommit = 1;
                    ELSE
@@ -13875,7 +13892,7 @@ BEGIN
 
                             CALL call_RMTMatrix_Relative (SBO_CLASS_RMROOT, twRMRootIx, twRMTObjectIx_Open);
 
-                          SELECT twRMTObjectIx_Open AS twRMTObject;
+                          SELECT twRMTObjectIx_Open AS twRMTObjectIx;
    
                              SET bCommit = 1;
                    ELSE
