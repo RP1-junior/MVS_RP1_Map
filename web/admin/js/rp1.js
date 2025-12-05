@@ -130,6 +130,7 @@ class ExtractMap extends MV.MVMF.NOTIFICATION
    {
       let Result = {
          twObjectIx:    pRMXObject.twObjectIx,
+         wClass:        pRMXObject.wClass_Object, 
          sName:         pRMXObject.pName.wsRMPObjectId,
          pTransform:    {
             aPosition: [
