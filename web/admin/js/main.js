@@ -48,6 +48,8 @@ let draggedObjects = [];
 let isAltPressed = false;
 let isDuplicating = false;
 let originalObject = null;
+// Flag to prevent selection changes immediately after transform operations
+let justFinishedTransform = false;
 
 // Camera panning state
 let isSpacePressed = false;
@@ -3115,6 +3117,12 @@ snapCheckbox.addEventListener("change", e => {
 
 // ===== Hover & selection (canvas) =====
 renderer.domElement.addEventListener("mousemove", e => {
+    // Clear the transform flag on mouse move to allow normal selection again
+    // This ensures that after a transform, the next mouse movement allows selection
+    if (justFinishedTransform && !transform.dragging) {
+        justFinishedTransform = false;
+    }
+    
     const rect = renderer.domElement.getBoundingClientRect();
     const mouse = new THREE.Vector2(((e.clientX - rect.left) / rect.width) * 2 - 1,-((e.clientY - rect.top) / rect.height) * 2 + 1);
     const raycaster = new THREE.Raycaster();
@@ -3159,6 +3167,13 @@ renderer.domElement.addEventListener("click", e => {
         if (!checkUnsavedChangesBeforeEdit()) {
             return;
         }
+    }
+    
+    // Prevent selection changes immediately after a transform operation
+    // This ensures the object being edited remains selected even if it overlaps with another object
+    if (justFinishedTransform) {
+        justFinishedTransform = false; // Clear the flag
+        return; // Don't change selection
     }
     
     const rect = renderer.domElement.getBoundingClientRect();
@@ -3567,6 +3582,14 @@ transform.addEventListener("dragging-changed", e => {
         lastValidPosition = null;
         lastValidQuaternion = null;
         lastValidScale = null;
+
+        // Set flag to prevent selection changes immediately after transform
+        // This ensures the object being edited remains selected even if it overlaps with another object
+        justFinishedTransform = true;
+        // Clear the flag after a short delay to allow normal selection again
+        setTimeout(() => {
+            justFinishedTransform = false;
+        }, 100); // 100ms should be enough to prevent accidental selection from the mouse release
 
         if (isDuplicating) {
             isDuplicating = false;
@@ -5402,15 +5425,16 @@ function createObjectLibraryItem(objectPath) {
             model.userData.isSelectable = true;
             model.name = objectName;
             
-            // Track original source
+            // Track original source - use full path format /objects/filename.glb for sReference
+            const referencePath = `/objects/${objectPath}`;
             model.userData.sourceRef = {
                 originalFileName: objectPath,
                 baseName: objectName,
-                reference: objectPath
+                reference: referencePath
             };
             
-            // Cache the model
-            modelCache.set(objectPath, model);
+            // Cache the model using the normalized reference path for consistency with loadModelFromReference
+            modelCache.set(referencePath, model);
             
             // Position at origin or camera focus point
             model.position.set(0, 0, 0);
