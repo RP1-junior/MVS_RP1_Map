@@ -272,7 +272,7 @@ class ExtractMap extends MV.MVMF.NOTIFICATION
       else if (this.#pRMXPending && pNotice.pCreator.IsReady () && 
                pNotice.pCreator.wClass_Object == this.#pRMXPending.wClass_Object && pNotice.pCreator.twObjectIx == this.#pRMXPending.twObjectIx)
       {
-
+         this.#bPending = false;
       }
    }
 
@@ -488,7 +488,14 @@ class ExtractMap extends MV.MVMF.NOTIFICATION
       else
       {
          console.log ('ERROR: Creating Object - ' + pIAction.pResponse.nResult);         
+
+         this.#bPending = false;
       }
+   }
+
+   async WaitForSingleObject ()
+   {
+      let promise = new Promise (resolve)
    }
 
    UpdateRMPObject (pJSONObject, pRMXObject_Parent, mpRemovedNodes)

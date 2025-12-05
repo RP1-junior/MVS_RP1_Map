@@ -3317,21 +3317,18 @@ BEGIN
                             THEN
                                      CALL call_Error (99, 'twObjectIx is invalid', nError);
                           END IF ;
-                    END
                  ELSEIF wClass = SBO_CLASS_RMTOBJECT
                    THEN
                               IF NOT EXISTS (SELECT 1 FROM RMTObject WHERE ObjectHead_Self_twObjectIx = twObjectIx)
                             THEN
                                      CALL call_Error (99, 'twObjectIx is invalid', nError);
                           END IF ;
-                    END
                  ELSEIF wClass = SBO_CLASS_RMPOBJECT
                    THEN
                               IF NOT EXISTS (SELECT 1 FROM RMPObject WHERE ObjectHead_Self_twObjectIx = twObjectIx)
                             THEN
                                      CALL call_Error (99, 'twObjectIx is invalid', nError);
                           END IF ;
-                    END
                    ELSE
                             CALL call_Error (99, 'wClass is invalid', nError);
                  END IF ;
