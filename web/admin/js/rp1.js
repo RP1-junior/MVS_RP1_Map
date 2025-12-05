@@ -445,7 +445,7 @@ class ExtractMap extends MV.MVMF.NOTIFICATION
 
    RMPEditAll (pRMPObject, pJSON)
    {
-      this.RMPEditType      (pRMPObject, pJSON);
+      this.RMPEditName      (pRMPObject, pJSON);
       this.RMPEditResource  (pRMPObject, pJSON);
       this.RMPEditBound     (pRMPObject, pJSON);
       this.RMPEditTransform (pRMPObject, pJSON);
@@ -483,6 +483,7 @@ class ExtractMap extends MV.MVMF.NOTIFICATION
    {
       if (JSONData.twObjectIx == this.#pRMXRoot.twObjectIx)
       {
+         this.RMPEditAll ()
       }
       else
       {

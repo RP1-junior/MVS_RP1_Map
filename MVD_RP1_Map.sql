@@ -3420,10 +3420,10 @@ BEGIN
                                               CALL call_Error (-3, 'Failed to update new parent');
                                    END IF ;
                             ELSE
-                                     CALL call_Error -2, ('Failed to update RMPObject');
+                                     CALL call_Error (-2, 'Failed to update RMPObject');
                           END IF ;
                    ELSE
-                            CALL call_Error -1, ('Failed to update old parent');
+                            CALL call_Error (-1, 'Failed to update old parent');
                  END IF ;
         END IF ;
 
