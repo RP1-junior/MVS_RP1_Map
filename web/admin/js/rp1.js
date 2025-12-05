@@ -128,7 +128,7 @@ class ExtractMap extends MV.MVMF.NOTIFICATION
    {
       let Result = {
          twObjectIx:    pRMXObject.twObjectIx,
-         sName:         pRMXObject.pResource.sName,
+         sName:         pRMXObject.pName.wsRMPObjectId,
          pTransform:    {
             aPosition: [
                pRMXObject.pTransform.vPosition.dX,
@@ -451,16 +451,18 @@ class ExtractMap extends MV.MVMF.NOTIFICATION
       this.RMPEditTransform (pRMPObject, pJSON);
    }
 
-   UpdateRMPObject (aChildren, pRMPObject_Parent)
+   UpdateRMPObject (pJSON, pRMPObject_Parent)
    {
-      this.RMPEditAll (pRMPObject_Parent, aChildren[i]);
+      this.RMPEditAll (pRMPObject_Parent, pJSON);
 
       for (let i=0; i < aChildren.length; i++)
       {
          if (aChildren[i].twObjectIx)
          {
             this.RMPEditAll (this.#m_MapRMXItem['73' + '-' + aChildren[i].twObjectIx], aChildren[i]);
+            this.UpdateRMPObject (aChildren[i].aChildren);
          }
+/*         
          else
          {
             let pIAction = pRMPObject_Parent.Request ('RMPOBJECT_OPEN');
@@ -476,8 +478,7 @@ class ExtractMap extends MV.MVMF.NOTIFICATION
                pIAction.Send (this, Response);
             }
          }
-
-         this.UpdateRMPObject (aChildren[i].aChildren);
+*/            
       }
    }
 
