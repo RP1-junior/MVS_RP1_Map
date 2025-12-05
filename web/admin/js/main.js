@@ -2800,6 +2800,20 @@ function duplicateObject(obj, offset=new THREE.Vector3(1,0,1)) {
     delete duplicate.userData.dimGroup;
     delete duplicate.userData.listItem;
 
+    // Clear wClass and twObjectIx from duplicates (these should only exist if originally imported from JSON)
+    delete duplicate.userData.wClass;
+    delete duplicate.userData.twObjectIx;
+
+    // Also clear from any children if this is a group
+    if (duplicate instanceof THREE.Group) {
+        duplicate.traverse(child => {
+            if (child.userData) {
+                delete child.userData.wClass;
+                delete child.userData.twObjectIx;
+            }
+        });
+    }
+
     return duplicate;
 }
 
@@ -4082,7 +4096,6 @@ function buildNode (obj)
       const displayName = listItemLabel?.textContent?.trim() || obj.name || baseName || "Object Root";
 
       const node = {
-         twObjectIx: obj.userData?.twObjectIx ?? 1,
          sName: displayName,
          pTransform: {
             aPosition: [localPosition.x, localPosition.y, localPosition.z],
@@ -4092,6 +4105,14 @@ function buildNode (obj)
          aBound: [size.x, size.y, size.z],
          aChildren: []
       };
+
+      // Only include wClass and twObjectIx if they were originally provided in JSON import
+      if (obj.userData?.wClass !== undefined) {
+         node.wClass = obj.userData.wClass;
+      }
+      if (obj.userData?.twObjectIx !== undefined) {
+         node.twObjectIx = obj.userData.twObjectIx;
+      }
 
       if (obj instanceof THREE.Group)
       {
@@ -4123,6 +4144,14 @@ function buildNode (obj)
         aBound: [size.x, size.y, size.z],
         aChildren: []
    };
+
+   // Only include wClass and twObjectIx if they were originally provided in JSON import
+   if (obj.userData?.wClass !== undefined) {
+      node.wClass = obj.userData.wClass;
+   }
+   if (obj.userData?.twObjectIx !== undefined) {
+      node.twObjectIx = obj.userData.twObjectIx;
+   }
 
    if (obj instanceof THREE.Group)
    {
@@ -4271,11 +4300,12 @@ async function parseJSONAndUpdateScene(jsonText, skipStateSave = false) {
 
         // Handle Object Root updates from JSON
         if (isObjectRootFormat) {
-            // Store twObjectIx from JSON (or default to 1 if not provided)
+            // Only store wClass and twObjectIx if they were provided in JSON (don't set defaults)
+            if (rootNode.wClass !== undefined) {
+                canvasRoot.userData.wClass = rootNode.wClass;
+            }
             if (rootNode.twObjectIx !== undefined) {
                 canvasRoot.userData.twObjectIx = rootNode.twObjectIx;
-            } else {
-                canvasRoot.userData.twObjectIx = 1;
             }
 
             // Update name from JSON
@@ -4750,6 +4780,14 @@ async function updateOrCreateObject(node, parent, existingObjects, processedObje
                 }
             };
 
+            // Only store wClass and twObjectIx if they were provided in JSON (don't set defaults)
+            if (node.wClass !== undefined) {
+                obj.userData.wClass = node.wClass;
+            }
+            if (node.twObjectIx !== undefined) {
+                obj.userData.twObjectIx = node.twObjectIx;
+            }
+
             // Store bounding box from JSON if available
             if (node.aBound && Array.isArray(node.aBound) && node.aBound.length >= 3) {
                 obj.userData.jsonBounds = {
@@ -4822,6 +4860,14 @@ function updateObjectFromNode(obj, node, existingObjects) {
 
     // Mark as imported from JSON to skip canvas clamping
     obj.userData.isImportedFromJSON = true;
+
+    // Only store wClass and twObjectIx if they were provided in JSON (don't set defaults)
+    if (node.wClass !== undefined) {
+        obj.userData.wClass = node.wClass;
+    }
+    if (node.twObjectIx !== undefined) {
+        obj.userData.twObjectIx = node.twObjectIx;
+    }
 
     // Get sName from root level (new format) or from pResource (old format for backward compatibility)
     const nodeSName = node.sName || (node.pResource?.sName);
@@ -4918,6 +4964,14 @@ async function createObjectFromNode(node) {
         // Mark as imported from JSON to skip canvas clamping
         obj.name = objectName;
 
+        // Only store wClass and twObjectIx if they were provided in JSON (don't set defaults)
+        if (node.wClass !== undefined) {
+            obj.userData.wClass = node.wClass;
+        }
+        if (node.twObjectIx !== undefined) {
+            obj.userData.twObjectIx = node.twObjectIx;
+        }
+
         // Always set source reference from JSON, even if empty
         // This ensures consistent behavior for objects with shared sReference values
         obj.userData.sourceRef = {
@@ -4966,6 +5020,15 @@ async function createObjectFromNode(node) {
         obj.userData.isSelectable = true;
         obj.userData.isImportedFromJSON = true;
         obj.name = `${objectName} (Failed to Load)`;
+
+        // Only store wClass and twObjectIx if they were provided in JSON (don't set defaults)
+        if (node.wClass !== undefined) {
+            obj.userData.wClass = node.wClass;
+        }
+        if (node.twObjectIx !== undefined) {
+            obj.userData.twObjectIx = node.twObjectIx;
+        }
+
         obj.userData.sourceRef = {
             reference: sReference,
             originalFileName: sReference,
